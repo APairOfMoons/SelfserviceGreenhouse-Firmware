@@ -4,7 +4,7 @@
 set(RASC_TARGET_DEVICE R7FA4M2AD)
 
 set(RASC_TARGET_ARCH cortex-m33)
-set(RASC_PROJECT_NAME SelfserviceGreenhouse_Firmware)
+set(RASC_PROJECT_NAME SelfserviceGreenhouse-Firmware)
 SET(RASC_TOOLCHAIN_NAME LLVMARM)
 
 SET(RASC_CMAKE_ASM_FLAGS "-mfloat-abi=hard;--target=arm-none-eabi;-mcpu=cortex-m33;-mfpu=fpv5-sp-d16;-Wunused;-Wuninitialized;-Wall;-Wextra;-Wmissing-declarations;-Wconversion;-Wpointer-arith;-Wshadow;-Waggregate-return;-Wno-parentheses-equality;-Wfloat-equal;-fshort-enums;-fno-unroll-loops;-fmessage-length=0;-fsigned-char;-ffunction-sections;-fdata-sections;-mthumb;-mlittle-endian;-x;assembler-with-cpp;-MP")
