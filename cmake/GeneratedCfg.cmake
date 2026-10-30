@@ -11,7 +11,7 @@ SET(RASC_CMAKE_ASM_FLAGS "-mfloat-abi=hard;--target=arm-none-eabi;-mcpu=cortex-m
 SET(RASC_CMAKE_C_FLAGS "-mfloat-abi=hard;--target=arm-none-eabi;-mcpu=cortex-m33;-mfpu=fpv5-sp-d16;-Wunused;-Wuninitialized;-Wall;-Wextra;-Wmissing-declarations;-Wconversion;-Wpointer-arith;-Wshadow;-Waggregate-return;-Wno-parentheses-equality;-Wfloat-equal;-fshort-enums;-fno-unroll-loops;-fmessage-length=0;-fsigned-char;-ffunction-sections;-fdata-sections;-mthumb;-mlittle-endian;-std=c99;-MP;-Os")
 SET(RASC_CMAKE_CXX_FLAGS "-mfloat-abi=hard;--target=arm-none-eabi;-mcpu=cortex-m33;-mfpu=fpv5-sp-d16;-Wunused;-Wuninitialized;-Wall;-Wextra;-Wmissing-declarations;-Wconversion;-Wpointer-arith;-Wshadow;-Waggregate-return;-Wno-parentheses-equality;-Wfloat-equal;-fshort-enums;-fno-unroll-loops;-fmessage-length=0;-fsigned-char;-ffunction-sections;-fdata-sections;-mthumb;-mlittle-endian;-std=c++11;-MP;-fno-rtti;-fno-exceptions;-Os")
 SET(RASC_CMAKE_EXE_LINKER_FLAGS "-mfloat-abi=hard;--target=arm-none-eabi;-mcpu=cortex-m33;-mfpu=fpv5-sp-d16;-Wunused;-Wuninitialized;-Wall;-Wextra;-Wmissing-declarations;-Wconversion;-Wpointer-arith;-Wshadow;-Waggregate-return;-Wno-parentheses-equality;-Wfloat-equal;-fshort-enums;-fno-unroll-loops;-fmessage-length=0;-fsigned-char;-ffunction-sections;-fdata-sections;--target=arm-none-eabi;-mthumb;-mlittle-endian;-T;script/fsp.lld;-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map;-Wl,--gc-sections;-Wl,--cref;-Wl,--icf=none;-o;${PROJECT_NAME}.elf;-Wl,-z,norelro")
-SET(RASC_CMAKE_DEFINITIONS "_RENESAS_RA_;_RA_CORE=CM33;_RA_ORDINAL=1")
+SET(RASC_CMAKE_DEFINITIONS "_RA_CORE=CM33;_RA_ORDINAL=1;_RENESAS_RA_")
 SET(RASC_ASM_FILES "${CMAKE_CURRENT_SOURCE_DIR}/ra_gen/*.asm")
 
 SET(EXCLUDED_SOURCE_FILES )

@@ -15,7 +15,7 @@
 #if defined(_RA_TZ_SECURE) || defined(_RA_TZ_NONSECURE)
   #define BSP_CFG_OPTION_SETTING_OFS1_SEL  (4294965496 | ((0U << 0U)) | ((0U << 2U)) | ((BSP_CFG_CLOCKS_SECURE == 0) ? 0xF00 : 0U))
 #else
-#define BSP_CFG_OPTION_SETTING_OFS1_SEL  (4294965496)
+  #define BSP_CFG_OPTION_SETTING_OFS1_SEL  (4294965496)
 #endif
 #endif
 #endif /* BSP_MCU_OFS_CFG_H_ */

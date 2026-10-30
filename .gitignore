@@ -1,3 +1,4 @@
+# ---------- CMake ----------
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
@@ -10,3 +11,41 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+
+# ---------- e² studio / Eclipse CDT ----------
+/Debug/
+/Release/
+Objects/
+Listings/
+/Debug_*/
+*.o
+*.obj
+*.d
+*.sbd
+*.axf
+*.elf
+*.map
+*.lst
+*.crf
+*.dep
+*.lnp
+*.sct
+*.iex
+*.htm
+*.bin.tmp
+
+# ---------- Debugger ----------
+*.jlink
+*.jflash
+JLinkLog.txt
+JLinkSettings.ini
+*.log
+*.ses
+openocd.log
+
+# ---------- IDE ----------
+# Note: .settings/ .vscode/ .theia/ are a part of the project.
+/.idea
+/.vs
+.settings/standalone.prefs
+.settings/standalone.prefs
