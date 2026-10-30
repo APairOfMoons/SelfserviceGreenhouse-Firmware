@@ -11,6 +11,8 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+cmake/GeneratedCfg.cmake
+cmake/GeneratedSrc.cmake
 
 # ---------- e² studio / Eclipse CDT ----------
 /Debug/
@@ -47,5 +49,4 @@ openocd.log
 # Note: .settings/ .vscode/ .theia/ are a part of the project.
 /.idea
 /.vs
-.settings/standalone.prefs
 .settings/standalone.prefs
