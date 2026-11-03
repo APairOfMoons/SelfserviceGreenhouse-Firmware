@@ -50,9 +50,10 @@ bool setHeaterStatus(bool status) {
 
   return false; // Failed attempt / No changes
 }
-bool setPumpStatus(bool status) {
-
-  return false; // Failed attempt / No changes
+bool setPumpStatus(const bool status) {
+  R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_02_PIN_07,
+                    static_cast<bsp_io_level_t>(!status));
+  return true;
 }
 
 bool rotateTurntable(int deltaDegrees) {
