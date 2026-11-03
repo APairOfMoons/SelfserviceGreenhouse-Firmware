@@ -382,3 +382,12 @@ FSP Configuration
     Allocate Secure Context: Enable
     
     Instance "FreeRTOS Heap 4"
+  Thread "Comm Thread"
+    Symbol: comm_thread
+    Name: Comm Thread
+    Stack size (bytes): 3072
+    Priority: 1
+    Thread Context: NULL
+    Memory Allocation: Static
+    Allocate Secure Context: Enable
+    

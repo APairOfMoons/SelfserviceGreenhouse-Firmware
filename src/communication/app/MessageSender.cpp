@@ -8,12 +8,12 @@
 #include "communication/GreenhouseException.h"
 
 
-void uploadMonitoringData(MonitoringData monitoringData)
+void MessageSender::uploadMonitoringData(MonitoringData monitoringData)
 {
 
 }
 
-void throwGreenhouseException(GreenhouseException exception)
+void MessageSender::throwGreenhouseException(GreenhouseException exception)
 {
 
 }

@@ -11,7 +11,7 @@
 class MessageSender
 {
     public:
-    void sendMonitoringData(MonitoringData monitoringData);
+    void uploadMonitoringData(MonitoringData monitoringData);
     void throwGreenhouseException(GreenhouseException exception);
 };
 

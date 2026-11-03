@@ -353,6 +353,15 @@
       <property id="rtos.awsfreertos.thread.secure_context" value="rtos.awsfreertos.thread.secure_context.enable"/>
       <stack module="module.freertos.heap.4.1849223231"/>
     </context>
+    <context id="rtos.awsfreertos.thread.518710867">
+      <property id="_symbol" value="comm_thread"/>
+      <property id="rtos.awsfreertos.thread.name" value="Comm Thread"/>
+      <property id="rtos.awsfreertos.thread.stack" value="3072"/>
+      <property id="rtos.awsfreertos.thread.priority" value="1"/>
+      <property id="rtos.awsfreertos.thread.context" value="NULL"/>
+      <property id="rtos.awsfreertos.thread.allocation" value="rtos.awsfreertos.thread.allocation.static"/>
+      <property id="rtos.awsfreertos.thread.secure_context" value="rtos.awsfreertos.thread.secure_context.enable"/>
+    </context>
     <config id="config.driver.sci_uart">
       <property id="config.driver.sci_uart.param_checking_enable" value="config.driver.sci_uart.param_checking_enable.bsp"/>
       <property id="config.driver.sci_uart.fifo_support" value="config.driver.sci_uart.fifo_support.disabled"/>
