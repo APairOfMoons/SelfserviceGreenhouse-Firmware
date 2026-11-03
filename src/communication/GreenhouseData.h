@@ -6,7 +6,7 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_DATASTRUCTURE_H
 
 
-struct LogicData
+struct MonitoringData
 {
     double temperature;
     double air_humidity;
