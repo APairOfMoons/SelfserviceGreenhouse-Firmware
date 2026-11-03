@@ -6,6 +6,13 @@
 /* Common macro for FSP header files. There is also a corresponding FSP_FOOTER macro at the end of this file. */
 FSP_HEADER
 
+#define SOIL_HUMIDITY (BSP_IO_PORT_00_PIN_00)
+#define FAN_CTRL (BSP_IO_PORT_00_PIN_01)
+#define ESP01S (BSP_IO_PORT_01_PIN_00)
+#define PWM_OUT (BSP_IO_PORT_01_PIN_09)
+#define OB_LED (BSP_IO_PORT_01_PIN_11)
+#define WARTERMARK_IRQ (BSP_IO_PORT_02_PIN_06)
+#define PUMP_CTRL (BSP_IO_PORT_02_PIN_07)
 
 extern const ioport_cfg_t g_bsp_pin_cfg; /* R7FA4M2AD3CFL.pincfg */
 
