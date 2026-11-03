@@ -1,4 +1,4 @@
-#Tue Nov 03 17:07:42 CST 2026
+#Tue Nov 03 23:15:14 CST 2026
 com.renesas.cdt.ddsc.content/com.renesas.cdt.ddsc.content.defaultlinkerscript=script/fsp.lld
 com.renesas.cdt.ddsc.contentgen.options/options/suppresswarningspaths=ra/arm,ra/aws
 com.renesas.cdt.ddsc.contentgen.options/options/toolchainversion=
@@ -34,4 +34,4 @@ com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#Projects\#\#all\#\#common\#
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#Projects\#\#all\#\#common\#\#\#\#6.6.0/libraries=
 com.renesas.cdt.ddsc.project.standalone.projectgenerationoptions/ideProjectType=CMAKE
 com.renesas.cdt.ddsc.project.standalone.projectgenerationoptions/isCpp=true
-com.renesas.cdt.ddsc.settingseditor/com.renesas.cdt.ddsc.settingseditor.active_page=PinConfiguration
+com.renesas.cdt.ddsc.settingseditor/com.renesas.cdt.ddsc.settingseditor.active_page=SWPConfigurator

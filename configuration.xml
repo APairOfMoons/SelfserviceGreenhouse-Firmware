@@ -230,7 +230,7 @@
     <module id="module.driver.timer_on_gpt.440345529">
       <property id="module.driver.timer.name" value="g_timer0"/>
       <property id="module.driver.timer.channel" value="1"/>
-      <property id="module.driver.timer.mode" value="module.driver.timer.mode.mode_periodic"/>
+      <property id="module.driver.timer.mode" value="module.driver.timer.mode.mode_pwm"/>
       <property id="module.driver.timer.period" value="0x10000"/>
       <property id="module.driver.timer.compare_match.a.status" value="module.driver.timer.compare_match.a.status.disabled"/>
       <property id="module.driver.timer.compare_match.a.value" value="0x10000"/>
@@ -408,6 +408,7 @@
     <symbolicName propertyId="p111.symbolic_name" value="OB_LED"/>
     <symbolicName propertyId="p206.symbolic_name" value="WARTERMARK_IRQ"/>
     <symbolicName propertyId="p207.symbolic_name" value="PUMP_CTRL"/>
+    <symbolicName propertyId="p402.symbolic_name" value="LIGHT_CTRL"/>
     <pincfg active="true" name="R7FA4M2AD3CFL.pincfg" selected="true" symbol="g_bsp_pin_cfg">
       <configSetting altId="adc0.an00.p000" configurationId="adc0.an00"/>
       <configSetting altId="adc0.mode.custom" configurationId="adc0.mode"/>
@@ -442,6 +443,8 @@
       <configSetting altId="p207.gpio_mode.gpio_mode_in" configurationId="p207.gpio_mode"/>
       <configSetting altId="p300.debug0.swclk" configurationId="p300"/>
       <configSetting altId="p300.gpio_mode.gpio_mode_peripheral" configurationId="p300.gpio_mode"/>
+      <configSetting altId="p402.input" configurationId="p402"/>
+      <configSetting altId="p402.gpio_mode.gpio_mode_in" configurationId="p402.gpio_mode"/>
       <configSetting altId="p407.iic0.sda" configurationId="p407"/>
       <configSetting altId="p407.gpio_speed.gpio_speed_medium" configurationId="p407.gpio_drivecapacity"/>
       <configSetting altId="p407.gpio_mode.gpio_mode_peripheral" configurationId="p407.gpio_mode"/>
