@@ -13,6 +13,7 @@ FSP_HEADER
 #define OB_LED (BSP_IO_PORT_01_PIN_11)
 #define WARTERMARK_IRQ (BSP_IO_PORT_02_PIN_06)
 #define PUMP_CTRL (BSP_IO_PORT_02_PIN_07)
+#define LIGHT_CTRL (BSP_IO_PORT_04_PIN_02)
 
 extern const ioport_cfg_t g_bsp_pin_cfg; /* R7FA4M2AD3CFL.pincfg */
 

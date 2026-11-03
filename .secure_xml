@@ -71,6 +71,8 @@
       <configSetting altId="p207.input" configurationId="p207"/>
       <configSetting altId="p207.gpio_mode.gpio_mode_in" configurationId="p207.gpio_mode"/>
       <configSetting altId="p300.gpio_mode.gpio_mode_peripheral" configurationId="p300.gpio_mode"/>
+      <configSetting altId="p402.input" configurationId="p402"/>
+      <configSetting altId="p402.gpio_mode.gpio_mode_in" configurationId="p402.gpio_mode"/>
       <configSetting altId="p407.gpio_speed.gpio_speed_medium" configurationId="p407.gpio_drivecapacity"/>
       <configSetting altId="p407.gpio_mode.gpio_mode_peripheral" configurationId="p407.gpio_mode"/>
       <configSetting altId="p408.gpio_speed.gpio_speed_medium" configurationId="p408.gpio_drivecapacity"/>
