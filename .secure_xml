@@ -75,8 +75,8 @@
       <configSetting altId="p407.gpio_mode.gpio_mode_peripheral" configurationId="p407.gpio_mode"/>
       <configSetting altId="p408.gpio_speed.gpio_speed_medium" configurationId="p408.gpio_drivecapacity"/>
       <configSetting altId="p408.gpio_mode.gpio_mode_peripheral" configurationId="p408.gpio_mode"/>
-      <configSetting altId="sci0.rxd.p100" configurationId="sci0.rxd" peripheral="SCI0"/>
-      <configSetting altId="sci0.txd.p101" configurationId="sci0.txd" peripheral="SCI0"/>
+      <configSetting altId="sci0.rxd.p100" configurationId="sci0.rxd" isUsedByDriver="true" peripheral="SCI0"/>
+      <configSetting altId="sci0.txd.p101" configurationId="sci0.txd" isUsedByDriver="true" peripheral="SCI0"/>
     </pincfg>
   </raPinConfiguration>
 </raConfiguration>
