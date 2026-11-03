@@ -42,8 +42,9 @@ bool setFanStatus(const bool status) {
   return true;
 }
 bool setLightStatus(bool status) {
-
-  return false; // Failed attempt / No changes
+  R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_04_PIN_02,
+                    static_cast<bsp_io_level_t>(!status));
+  return true;
 }
 bool setHeaterStatus(bool status) {
 
