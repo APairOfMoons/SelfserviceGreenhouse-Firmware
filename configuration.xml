@@ -311,6 +311,8 @@
       <configSetting altId="debug0.mode.swd" configurationId="debug0.mode"/>
       <configSetting altId="debug0.swclk.p300" configurationId="debug0.swclk"/>
       <configSetting altId="debug0.swdio.p108" configurationId="debug0.swdio"/>
+      <configSetting altId="p001.output.high" configurationId="p001"/>
+      <configSetting altId="p001.gpio_mode.gpio_mode_out.high" configurationId="p001.gpio_mode"/>
       <configSetting altId="p108.debug0.swdio" configurationId="p108"/>
       <configSetting altId="p108.gpio_mode.gpio_mode_peripheral" configurationId="p108.gpio_mode"/>
       <configSetting altId="p111.output.low" configurationId="p111"/>

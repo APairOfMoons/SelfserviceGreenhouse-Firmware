@@ -6,9 +6,8 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 
 
-class HardwareDataManager
-{
-    public:
+
+namespace HardwareDataManager{
 
     //读取
 
