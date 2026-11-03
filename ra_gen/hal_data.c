@@ -201,7 +201,7 @@ const gpt_extended_cfg_t g_timer0_extend =
 
 const timer_cfg_t g_timer0_cfg =
 {
-    .mode                = TIMER_MODE_PERIODIC,
+    .mode                = TIMER_MODE_PWM,
     /* Actual period: 1.0416666666666667e-8 seconds. Actual duty: 0%. */ .period_counts = (uint32_t) 0x1, .duty_cycle_counts = 0x0, .source_div = (timer_source_div_t)0,
     .channel             = 1,
     .p_callback          = NULL,

@@ -21,6 +21,7 @@
             <slot name="P300.CM33" secure="true"/>
         </peripheral>
         <peripheral name="PORT4.CM33" group="PORT">
+            <slot name="P402.CM33" secure="true"/>
             <slot name="P407.CM33" secure="true"/>
             <slot name="P408.CM33" secure="true"/>
         </peripheral>
