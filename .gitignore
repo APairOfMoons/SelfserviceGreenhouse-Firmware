@@ -35,6 +35,8 @@ Listings/
 *.iex
 *.htm
 *.bin.tmp
+.secure_azone
+.settings/standalone.prefs
 
 # ---------- Debugger ----------
 *.jlink
@@ -50,3 +52,6 @@ openocd.log
 /.idea
 /.vs
 .settings/standalone.prefs
+
+# ---------- Agents ----------
+*.md
