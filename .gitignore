@@ -55,3 +55,5 @@ openocd.log
 
 # ---------- Agents ----------
 *.md
+/ozone.jdebug
+/ozone.jdebug.user
