@@ -4,7 +4,7 @@
 
 #include "logic/TelemetryReporter.h"
 
-#include "logic/MonitoringDataMapper.h"
+#include "app/MonitoringDataMapper.h"
 
 namespace greenhouse {
 namespace {

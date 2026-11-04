@@ -2,7 +2,7 @@
 // MessageSender 适配实现。
 //
 
-#include "logic/MessageSenderSink.h"
+#include "app/MessageSenderSink.h"
 
 namespace greenhouse {
 

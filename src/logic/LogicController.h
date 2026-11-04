@@ -23,7 +23,7 @@
 #ifndef SELFSERVICEGREENHOUSE_FIRMWARE_LOGICCONTROLLER_H
 #define SELFSERVICEGREENHOUSE_FIRMWARE_LOGICCONTROLLER_H
 
-#include "logic/GreenhouseParams.h"
+#include "configuration/LogicalConfiguration.h"
 #include "logic/IHardwareData.h"
 
 namespace greenhouse {
@@ -118,11 +118,11 @@ struct ControllerSnapshot
 class LogicController
 {
     public:
-    LogicController(IHardwareData &hw, const GreenhouseParams &params);
+    LogicController(IHardwareData &hw, const LogicalStatics &configuration);
 
     // ---------- 配置 ----------
-    void setParams(const GreenhouseParams &params);
-    const GreenhouseParams &params() const;
+    void setConfiguration(const LogicalStatics &configuration);
+    const LogicalStatics &configuration() const;
 
     // 冲突仲裁策略（超温禁补光、低温高湿时通风让路等）。
     void setConflictPolicy(const ConflictPolicy &policy);
@@ -190,7 +190,8 @@ class LogicController
     static constexpr uint32_t kTurnRetryMs = 60000UL;  // 转盘失败后的重试间隔
 
     IHardwareData &hw_;
-    GreenhouseParams params_;
+    LogicalStatics config_;
+    uint32_t configVersion_;
     ConflictPolicy policy_;
     ControllerSnapshot snap_;
     uint32_t fault_bits_;

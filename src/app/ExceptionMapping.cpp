@@ -2,7 +2,7 @@
 // 故障位与异常枚举的映射实现。
 //
 
-#include "logic/ExceptionMapping.h"
+#include "app/ExceptionMapping.h"
 
 namespace greenhouse {
 

@@ -51,7 +51,6 @@ openocd.log
 # Note: .settings/ .vscode/ .theia/ are a part of the project.
 /.idea
 /.vs
-.settings/standalone.prefs
 
 # ---------- Agents ----------
 *.md

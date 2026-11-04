@@ -2,7 +2,7 @@
 // ControllerSnapshot -> MonitoringData 转换实现。
 //
 
-#include "logic/MonitoringDataMapper.h"
+#include "app/MonitoringDataMapper.h"
 
 namespace greenhouse {
 

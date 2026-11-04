@@ -23,9 +23,10 @@ inline uint32_t elapsed(uint32_t now, uint32_t since)
 
 } // namespace
 
-LogicController::LogicController(IHardwareData &hw, const GreenhouseParams &params)
+LogicController::LogicController(IHardwareData &hw, const LogicalStatics &configuration)
     : hw_(hw),
-      params_(params),
+      config_(configuration),
+      configVersion_(LogicalConfiguration::version()),
       policy_(),
       fault_bits_(FAULT_NONE),
       mode_(OperatingMode::AUTO),
@@ -62,7 +63,6 @@ LogicController::LogicController(IHardwareData &hw, const GreenhouseParams &para
       time_base_ms_(0UL),
       time_valid_(false)
 {
-    (void) normalizeParams(&params_);
 
     temperature_.value = 0.0F;
     temperature_.fail_count = 0U;
@@ -92,15 +92,14 @@ LogicController::LogicController(IHardwareData &hw, const GreenhouseParams &para
 
 // ---------------------------------------------------------------- 配置
 
-void LogicController::setParams(const GreenhouseParams &params)
+void LogicController::setConfiguration(const LogicalStatics &configuration)
 {
-    params_ = params;
-    (void) normalizeParams(&params_);
+    config_ = configuration;
 }
 
-const GreenhouseParams &LogicController::params() const
+const LogicalStatics &LogicController::configuration() const
 {
-    return params_;
+    return config_;
 }
 
 void LogicController::setConflictPolicy(const ConflictPolicy &policy)
@@ -116,7 +115,7 @@ const ConflictPolicy &LogicController::conflictPolicy() const
 void LogicController::setMode(OperatingMode mode, uint32_t now_ms)
 {
     mode_ = mode;
-    manual_deadline_ms_ = now_ms + params_.manual_timeout_ms;
+    manual_deadline_ms_ = now_ms + config_.fixed.manualTimeoutMs;
     manual_fan_ = false;
     manual_light_ = false;
     manual_heater_ = false;
@@ -149,7 +148,7 @@ bool LogicController::setManualOutput(OutputId id, bool on, uint32_t now_ms)
         return false;
     }
 
-    manual_deadline_ms_ = now_ms + params_.manual_timeout_ms;
+    manual_deadline_ms_ = now_ms + config_.fixed.manualTimeoutMs;
 
     switch (id)
     {
@@ -218,8 +217,8 @@ bool LogicController::isDaytime(uint32_t now_ms) const
     }
 
     const uint32_t tod = timeOfDay(now_ms);
-    const uint32_t start = params_.day_start_ms;
-    const uint32_t len = params_.day_length_ms;
+    const uint32_t start = config_.variable.dayStartMs;
+    const uint32_t len = config_.variable.dayLengthMs;
 
     if ((start + len) <= kDayMs)
     {
@@ -235,6 +234,14 @@ bool LogicController::isDaytime(uint32_t now_ms) const
 void LogicController::step(uint32_t now_ms)
 {
     now_ms_ = now_ms;
+
+    // 每拍取一份配置快照：网端修改下一拍即生效，且不会读到撕裂数据。
+    const uint32_t configurationVersion = LogicalConfiguration::version();
+    if (configurationVersion != configVersion_)
+    {
+        LogicalConfiguration::snapshot(&config_);
+        configVersion_ = configurationVersion;
+    }
 
     if (!started_)
     {
@@ -281,7 +288,7 @@ uint32_t LogicController::faults() const
 
 bool LogicController::sampleDue(uint32_t now_ms) const
 {
-    return elapsed(now_ms, last_sample_ms_) >= params_.sample_period_ms;
+    return elapsed(now_ms, last_sample_ms_) >= config_.variable.samplePeriodMs;
 }
 
 void LogicController::sample(uint32_t now_ms)
@@ -357,18 +364,18 @@ void LogicController::sample(uint32_t now_ms)
 
 bool LogicController::sensorOk(const Channel &channel) const
 {
-    return channel.valid && (channel.fail_count < params_.sensor_fail_limit);
+    return channel.valid && (channel.fail_count < config_.fixed.sensorFailLimit);
 }
 
 bool LogicController::waterOk() const
 {
-    return water_level_.valid && (water_level_.fail_count < params_.sensor_fail_limit) &&
+    return water_level_.valid && (water_level_.fail_count < config_.fixed.sensorFailLimit) &&
            (water_level_.value >= 0.5F);
 }
 
 void LogicController::evaluate(uint32_t now_ms)
 {
-    const uint8_t limit = params_.sensor_fail_limit;
+    const uint8_t limit = config_.fixed.sensorFailLimit;
 
     reportFault(FAULT_TEMPERATURE_SENSOR, temperature_.valid && (temperature_.fail_count >= limit));
     reportFault(FAULT_AIR_HUMIDITY_SENSOR,
@@ -381,9 +388,9 @@ void LogicController::evaluate(uint32_t now_ms)
     // 带回滞：低于 (min - 回滞带) 才置位，回升到 min 才清除，避免阈值附近抖动。
     const bool humidity_low_active =
         sensorOk(air_humidity_) &&
-        ((air_humidity_.value < (params_.min_air_humidity - params_.air_humidity_hysteresis)) ||
+        ((air_humidity_.value < (config_.variable.minAirHumidity - config_.variable.airHumidityHysteresis)) ||
          (((fault_bits_ & FAULT_AIR_HUMIDITY_LOW) != 0U) &&
-          (air_humidity_.value < params_.min_air_humidity)));
+          (air_humidity_.value < config_.variable.minAirHumidity)));
     reportFault(FAULT_AIR_HUMIDITY_LOW, humidity_low_active);
     reportFault(FAULT_TIME_UNSET, !time_valid_);
 
@@ -397,11 +404,11 @@ void LogicController::evaluate(uint32_t now_ms)
     }
 
     const bool over_temperature = sensorOk(temperature_) &&
-                                  (temperature_.value > params_.max_temperature);
+                                  (temperature_.value > config_.variable.maxTemperature);
     reportFault(FAULT_OVER_TEMPERATURE, over_temperature);
 
     if (pump_active_ &&
-        (elapsed(now_ms, pump_start_ms_) >= (params_.pump_dose_ms + params_.pump_dose_ms)))
+        (elapsed(now_ms, pump_start_ms_) >= (config_.variable.pumpDurationMs + config_.variable.pumpDurationMs)))
     {
         reportFault(FAULT_PUMP_TIMEOUT, true); // 剂量保护都失效时的兜底
         stopPump();
@@ -434,7 +441,7 @@ void LogicController::evaluate(uint32_t now_ms)
         {
             stopPump();
         }
-        else if (pump_active_ && (elapsed(now_ms, pump_start_ms_) >= params_.pump_dose_ms))
+        else if (pump_active_ && (elapsed(now_ms, pump_start_ms_) >= config_.variable.pumpDurationMs))
         {
             stopPump();
         }
@@ -454,7 +461,7 @@ void LogicController::evaluate(uint32_t now_ms)
 void LogicController::applyConflictPolicy(uint32_t now_ms)
 {
     const bool over_temperature = sensorOk(temperature_) &&
-                                  (temperature_.value > params_.max_temperature);
+                                  (temperature_.value > config_.variable.maxTemperature);
 
     // 1) 超温：停加热、抑制补光、暂停浇水（补光与浇水都会加剧高温问题）
     if (over_temperature)
@@ -479,7 +486,7 @@ void LogicController::applyConflictPolicy(uint32_t now_ms)
         const bool humidity_override =
             sensorOk(air_humidity_) &&
             (air_humidity_.value >=
-             (params_.max_air_humidity + policy_.fan_humidity_override_pct));
+             (config_.variable.maxAirHumidity + policy_.fan_humidity_override_pct));
 
         if (!(humidity_override && fanPulseOpen(now_ms)))
         {
@@ -571,15 +578,15 @@ void LogicController::updateTemperatureControl(uint32_t now_ms)
     const uint8_t index = static_cast<uint8_t>(OutputId::HEATER);
     bool want = outputs_[index];
 
-    if (value > params_.max_temperature)
+    if (value > config_.variable.maxTemperature)
     {
         want = false;
     }
-    else if (value < params_.min_temperature)
+    else if (value < config_.variable.minTemperature)
     {
         want = true;
     }
-    else if (want && (value >= (params_.min_temperature + params_.temperature_hysteresis)))
+    else if (want && (value >= (config_.variable.minTemperature + config_.variable.temperatureHysteresis)))
     {
         want = false;
     }
@@ -608,7 +615,7 @@ void LogicController::updateAirHumidityControl(uint32_t now_ms)
 
     // 超温是安全事件：直接开风扇降温，绕开 30 s 防抖。
     // （否则"刚关风扇 5 s 后升温"会白等半分钟，这是之前的缺陷。）
-    if (sensorOk(temperature_) && (temperature_.value > params_.max_temperature))
+    if (sensorOk(temperature_) && (temperature_.value > config_.variable.maxTemperature))
     {
         if (!outputs_[index])
         {
@@ -622,12 +629,12 @@ void LogicController::updateAirHumidityControl(uint32_t now_ms)
 
     if (sensorOk(air_humidity_))
     {
-        if (air_humidity_.value >= params_.max_air_humidity)
+        if (air_humidity_.value >= config_.variable.maxAirHumidity)
         {
             want = true;
         }
         else if (want &&
-                 (air_humidity_.value <= (params_.max_air_humidity - params_.air_humidity_hysteresis)))
+                 (air_humidity_.value <= (config_.variable.maxAirHumidity - config_.variable.airHumidityHysteresis)))
         {
             want = false;
         }
@@ -672,7 +679,7 @@ void LogicController::updateIlluminance(uint32_t now_ms)
     if (!daytime)
     {
         // 夜间不补光；但满足最短点亮时间后才关，避免频繁通断
-        if (light_on && (elapsed(now_ms, light_on_since_ms_) < params_.illuminance_min_on_ms))
+        if (light_on && (elapsed(now_ms, light_on_since_ms_) < config_.variable.illuminanceMinOnMs))
         {
             want = true;
         }
@@ -681,11 +688,11 @@ void LogicController::updateIlluminance(uint32_t now_ms)
             want = false;
         }
     }
-    else if (illuminance_.value < static_cast<float>(params_.min_illuminance))
+    else if (illuminance_.value < static_cast<float>(static_cast<uint16_t>(config_.variable.minIlluminance)))
     {
         want = true;
     }
-    else if (light_on && (elapsed(now_ms, light_on_since_ms_) < params_.illuminance_min_on_ms))
+    else if (light_on && (elapsed(now_ms, light_on_since_ms_) < config_.variable.illuminanceMinOnMs))
     {
         want = true;
     }
@@ -718,13 +725,13 @@ bool LogicController::pumpAllowed(uint32_t now_ms)
         pump_runs_today_ = 0UL;
     }
 
-    if (pump_runs_today_ >= params_.pump_max_per_day)
+    if (pump_runs_today_ >= config_.variable.pumpMaxPerDay)
     {
         return false;
     }
 
     if (pump_started_once_ &&
-        (elapsed(now_ms, pump_last_start_ms_) < params_.pump_min_interval_ms))
+        (elapsed(now_ms, pump_last_start_ms_) < config_.variable.pumpMinIntervalMs))
     {
         return false;
     }
@@ -777,13 +784,13 @@ void LogicController::updateIrrigation(uint32_t now_ms)
 
         // 土壤已经浇透（可能是传感器响应或上一轮残留水分）就提前收手，避免浇过头。
         if (sensorOk(soil_humidity_) &&
-            (soil_humidity_.value >= params_.max_soil_humidity))
+            (soil_humidity_.value >= config_.variable.maxSoilHumidity))
         {
             stopPump();
             return;
         }
 
-        if (elapsed(now_ms, pump_applied_ms_) >= params_.pump_dose_ms)
+        if (elapsed(now_ms, pump_applied_ms_) >= config_.variable.pumpDurationMs)
         {
             stopPump();
         }
@@ -795,7 +802,7 @@ void LogicController::updateIrrigation(uint32_t now_ms)
         return; // 土壤湿度不可测时不浇水
     }
 
-    if (soil_humidity_.value <= params_.min_soil_humidity)
+    if (soil_humidity_.value <= config_.variable.minSoilHumidity)
     {
         startPump(now_ms);
     }
@@ -837,15 +844,15 @@ void LogicController::updateTurntable(uint32_t now_ms)
         return;
     }
 
-    if (elapsed(now_ms, last_turn_ms_) < params_.turn_interval_ms)
+    if (elapsed(now_ms, last_turn_ms_) < config_.variable.turnIntervalMs)
     {
         return;
     }
 
     last_turn_ms_ = now_ms;
 
-    const int16_t step = params_.turn_step_angle;
-    const int16_t limit = params_.max_turn_angle;
+    const int16_t step = config_.variable.turnStepAngle;
+    const int16_t limit = config_.variable.maxTurnAngle;
 
     int16_t next = static_cast<int16_t>(turn_angle_ + static_cast<int16_t>(turn_direction_ * step));
     if ((next > limit) || (next < static_cast<int16_t>(-limit)))

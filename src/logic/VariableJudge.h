@@ -16,7 +16,7 @@
 
 #include <stdint.h>
 
-#include "configuration/Configuration.h"
+#include "configuration/LogicalConfiguration.h"
 
 namespace greenhouse {
 
@@ -72,7 +72,7 @@ class VariableJudge
 {
     public:
     // 四路上下限均取自 GREENHOUSE_CONFIGURATION（温度/空气湿度/土壤湿度/光照）。
-    explicit VariableJudge(const GreenhouseConfiguration &config);
+    explicit VariableJudge(const LogicalStatics &config);
 
     // 单独覆盖某个变量的阈值（例如切换植物预设后调用）。
     void setLimits(VarId id, const RangeLimits &limits);

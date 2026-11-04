@@ -30,22 +30,24 @@ constexpr float kIlluminanceAbsMax = 200000.0F;
 
 } // namespace
 
-VariableJudge::VariableJudge(const GreenhouseConfiguration &config)
+VariableJudge::VariableJudge(const LogicalStatics &config)
     : fallback_used_(false)
 {
-    applyConfigLimits(VarId::TEMPERATURE, config.MIN_TEMPERATURE, config.MAX_TEMPERATURE,
-                      kTemperatureHysteresis, kTemperatureAbsMin, kTemperatureAbsMax,
-                      kTemperatureFallback);
+    const VariableStatics &variable = config.variable;
 
-    applyConfigLimits(VarId::AIR_HUMIDITY, config.MIN_AIR_HUMIDITY, config.MAX_AIR_HUMIDITY,
-                      kAirHumidityHysteresis, kHumidityAbsMin, kHumidityAbsMax,
-                      kAirHumidityFallback);
+    applyConfigLimits(VarId::TEMPERATURE, variable.minTemperature, variable.maxTemperature,
+                      static_cast<float>(variable.temperatureHysteresis), kTemperatureAbsMin,
+                      kTemperatureAbsMax, kTemperatureFallback);
 
-    applyConfigLimits(VarId::SOIL_HUMIDITY, config.MIN_SOIL_HUMIDITY, config.MAX_SOIL_HUMIDITY,
+    applyConfigLimits(VarId::AIR_HUMIDITY, variable.minAirHumidity, variable.maxAirHumidity,
+                      static_cast<float>(variable.airHumidityHysteresis), kHumidityAbsMin,
+                      kHumidityAbsMax, kAirHumidityFallback);
+
+    applyConfigLimits(VarId::SOIL_HUMIDITY, variable.minSoilHumidity, variable.maxSoilHumidity,
                       kSoilHumidityHysteresis, kHumidityAbsMin, kHumidityAbsMax,
                       kSoilHumidityFallback);
 
-    applyConfigLimits(VarId::ILLUMINANCE, config.MIN_ILLUMINANCE, config.MAX_ILLUMINANCE,
+    applyConfigLimits(VarId::ILLUMINANCE, variable.minIlluminance, variable.maxIlluminance,
                       kIlluminanceHysteresis, kIlluminanceAbsMin, kIlluminanceAbsMax,
                       kIlluminanceFallback);
 

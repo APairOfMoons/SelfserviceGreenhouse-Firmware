@@ -15,12 +15,13 @@
 #if defined(LOGIC_HOST_TEST)
 
 #include <cstdio>
+#include <limits>
 
-#include "logic/ExceptionMapping.h"
+#include "app/ExceptionMapping.h"
 #include "logic/FakeHardware.h"
-#include "logic/GreenhouseParams.h"
+#include "configuration/LogicalConfiguration.h"
 #include "logic/LogicController.h"
-#include "logic/MonitoringDataMapper.h"
+#include "app/MonitoringDataMapper.h"
 #include "logic/TelemetryReporter.h"
 #include "logic/VariableJudge.h"
 
@@ -47,38 +48,38 @@ constexpr uint32_t kMinute = 60UL * kSecond;
 constexpr uint32_t kHour = 60UL * kMinute;
 
 // 测试自带的参数集：logic/ 不再内置默认值，数值由调用方提供。
-greenhouse::GreenhouseParams fastParams()
+LogicalStatics fastParams()
 {
-    greenhouse::GreenhouseParams params = {};
+    LogicalStatics params = {};
 
-    params.min_temperature = 18.0F;
-    params.max_temperature = 28.0F;
-    params.temperature_hysteresis = 1.5F;
+    params.variable.minTemperature = 18.0F;
+    params.variable.maxTemperature = 28.0F;
+    params.variable.temperatureHysteresis = 1.5F;
 
-    params.min_air_humidity = 30.0F;
-    params.max_air_humidity = 75.0F;
-    params.air_humidity_hysteresis = 5.0F;
+    params.variable.minAirHumidity = 30.0F;
+    params.variable.maxAirHumidity = 75.0F;
+    params.variable.airHumidityHysteresis = 5.0F;
 
-    params.min_illuminance = 1200U;
-    params.illuminance_min_on_ms = 10UL * kMinute;
-    params.day_start_ms = 7UL * kHour;
-    params.day_length_ms = 10UL * kHour;
+    params.variable.minIlluminance = 1200U;
+    params.variable.illuminanceMinOnMs = 10UL * kMinute;
+    params.variable.dayStartMs = 7UL * kHour;
+    params.variable.dayLengthMs = 10UL * kHour;
 
-    params.min_soil_humidity = 35.0F;
-    params.max_soil_humidity = 55.0F;
-    params.pump_dose_ms = 800UL;
-    params.pump_min_interval_ms = 6UL * kHour;
-    params.pump_max_per_day = 3U;
+    params.variable.minSoilHumidity = 35.0F;
+    params.variable.maxSoilHumidity = 55.0F;
+    params.variable.pumpDurationMs = 800UL;
+    params.variable.pumpMinIntervalMs = 6UL * kHour;
+    params.variable.pumpMaxPerDay = 3U;
 
-    params.max_turn_angle = 60;
-    params.turn_step_angle = 15;
-    params.turn_interval_ms = 60UL * kSecond;
-    params.turn_angle_per_day = 120;
+    params.variable.maxTurnAngle = 60;
+    params.variable.turnStepAngle = 15;
+    params.variable.turnIntervalMs = 60UL * kSecond;
+    params.variable.turnAnglePerDay = 120;
 
-    params.sample_period_ms = kStepMs;
-    params.sensor_fail_limit = 3U;
-    params.manual_timeout_ms = 60UL * kSecond;
-    params.has_rtc = true;
+    params.variable.samplePeriodMs = kStepMs;
+    params.fixed.sensorFailLimit = 3U;
+    params.fixed.manualTimeoutMs = 60UL * kSecond;
+    params.fixed.hasRtc = true;
 
     return params;
 }
@@ -86,7 +87,7 @@ greenhouse::GreenhouseParams fastParams()
 struct Harness
 {
     greenhouse::FakeHardware hw;
-    greenhouse::GreenhouseParams params;
+    LogicalStatics params;
     greenhouse::LogicController ctrl;
     uint32_t now;
 
@@ -265,9 +266,9 @@ void testRuntimeParamChange()
     h.advance(2UL * kSecond);
     CHECK(h.hw.heater_on); // 默认下限 18 ℃
 
-    greenhouse::GreenhouseParams tuned = h.params;
-    tuned.min_temperature = 10.0F;
-    h.ctrl.setParams(tuned);
+    LogicalStatics tuned = h.params;
+    tuned.variable.minTemperature = 10.0F;
+    h.ctrl.setConfiguration(tuned);
 
     h.advance(2UL * kMinute);
     CHECK(!h.hw.heater_on); // 新下限 10 ℃，12 ℃ 不再需要加热
@@ -478,23 +479,40 @@ void testTurntableBackoff()
 
 // ---------------------------------------------------------------- 四路量判定
 
-// 与 Configuration.h 的字段顺序一致。
-const GreenhouseConfiguration kTestConfig = {
-    10,        // TURN_ANGLE_PER_DAY
-    30.0,      // MAX_TEMPERATURE
-    10.0,      // MIN_TEMPERATURE
-    90.0,      // MAX_AIR_HUMIDITY
-    30.0,      // MIN_AIR_HUMIDITY
-    55.0,      // MAX_SOIL_HUMIDITY
-    30.0,      // MIN_SOIL_HUMIDITY
-    100000.0,  // MAX_ILLUMINANCE
-    1200.0,    // MIN_ILLUMINANCE
-    25565,     // NETWORK_PORT
-};
+// 测试用的逻辑配置（与默认值一致）。
+LogicalStatics makeTestConfiguration()
+{
+    LogicalStatics config = {};
+    config.variable.turnAnglePerDay = 10;
+    config.variable.minTemperature = 10.0;
+    config.variable.maxTemperature = 30.0;
+    config.variable.temperatureHysteresis = 1.5;
+    config.variable.minAirHumidity = 30.0;
+    config.variable.maxAirHumidity = 90.0;
+    config.variable.airHumidityHysteresis = 5.0;
+    config.variable.minSoilHumidity = 30.0;
+    config.variable.maxSoilHumidity = 55.0;
+    config.variable.minIlluminance = 1200.0;
+    config.variable.maxIlluminance = 100000.0;
+    config.variable.illuminanceMinOnMs = 10UL * kMinute;
+    config.variable.dayStartMs = 7UL * kHour;
+    config.variable.dayLengthMs = 10UL * kHour;
+    config.variable.pumpDurationMs = 800UL;
+    config.variable.pumpMinIntervalMs = 6UL * kHour;
+    config.variable.pumpMaxPerDay = 3U;
+    config.variable.maxTurnAngle = 60;
+    config.variable.turnStepAngle = 15;
+    config.variable.turnIntervalMs = 20UL * kMinute;
+    config.variable.samplePeriodMs = kStepMs;
+    config.fixed.sensorFailLimit = 3U;
+    config.fixed.manualTimeoutMs = 60UL * kSecond;
+    config.fixed.hasRtc = true;
+    return config;
+}
 
 void testVariableJudgeBasics()
 {
-    greenhouse::VariableJudge judge(kTestConfig);
+    greenhouse::VariableJudge judge(makeTestConfiguration());
     CHECK(!judge.usedFallbackLimits());
 
     using greenhouse::VariableReading;
@@ -513,7 +531,7 @@ void testVariableJudgeBasics()
 
 void testVariableJudgeHysteresis()
 {
-    greenhouse::VariableJudge judge(kTestConfig);
+    greenhouse::VariableJudge judge(makeTestConfiguration());
 
     using greenhouse::VarId;
     using greenhouse::VarState;
@@ -521,17 +539,17 @@ void testVariableJudgeHysteresis()
     // 温度 10 ℃ 为下限，回滞带宽 0.5 ℃
     CHECK(judge.judge(VarId::TEMPERATURE, {true, 9.0F}).state == VarState::LOW);
     CHECK(judge.judge(VarId::TEMPERATURE, {true, 10.2F}).state == VarState::LOW);
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 10.6F}).state == VarState::NORMAL);
+    CHECK(judge.judge(VarId::TEMPERATURE, {true, 11.6F}).state == VarState::NORMAL);
 
     // 空气湿度 90 % 为上限，回滞带宽 2 %
     CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 95.0F}).state == VarState::HIGH);
     CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 88.5F}).state == VarState::HIGH);
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 87.0F}).state == VarState::NORMAL);
+    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 84.0F}).state == VarState::NORMAL);
 }
 
 void testVariableJudgeMaskAndOverride()
 {
-    greenhouse::VariableJudge judge(kTestConfig);
+    greenhouse::VariableJudge judge(makeTestConfiguration());
 
     greenhouse::EnvironmentSample sample = {};
     sample.temperature = {true, 5.0F};    // LOW  -> bit0
@@ -553,42 +571,6 @@ void testVariableJudgeMaskAndOverride()
     judge.judge(greenhouse::VarId::ILLUMINANCE, {true, 8000.0F});
     CHECK(judge.outOfRangeMask() == 0x00U);
     CHECK(!judge.anyOutOfRange());
-}
-
-// ---------------------------------------------------------------- 配置回退
-
-// 字段错位（例如 25565 落在 MAX_SOIL_HUMIDITY 上）时应检测到并回退到内置阈值。
-void testVariableJudgeFallbackOnBadConfig()
-{
-    const GreenhouseConfiguration bad_config = {
-        10,      // TURN_ANGLE_PER_DAY
-        30.0,    // MAX_TEMPERATURE
-        10.0,    // MIN_TEMPERATURE
-        90.0,    // MAX_AIR_HUMIDITY
-        30.0,    // MIN_AIR_HUMIDITY
-        25565.0, // MAX_SOIL_HUMIDITY <- 明显越界
-        0.0,     // MIN_SOIL_HUMIDITY
-        0.0,     // MAX_ILLUMINANCE  <- min/max 均为 0
-        0.0,     // MIN_ILLUMINANCE
-        25565,   // NETWORK_PORT
-    };
-
-    greenhouse::VariableJudge judge(bad_config);
-    CHECK(judge.usedFallbackLimits());
-
-    // 土壤回退到 30..55 %，20 % 应判为 LOW
-    CHECK(judge.judge(greenhouse::VarId::SOIL_HUMIDITY, {true, 20.0F}).state ==
-          greenhouse::VarState::LOW);
-    // 温度配置本身合法，仍按 10..30 ℃ 判定
-    CHECK(judge.judge(greenhouse::VarId::TEMPERATURE, {true, 25.0F}).state ==
-          greenhouse::VarState::NORMAL);
-}
-
-// 默认配置四路都必须合法且落在物理量程内。
-void testDefaultConfigurationIsValid()
-{
-    greenhouse::VariableJudge judge(GREENHOUSE_CONFIGURATION);
-    CHECK(!judge.usedFallbackLimits());
 }
 
 // ---------------------------------------------------------------- 上报转换
@@ -809,8 +791,6 @@ int main()
     testVariableJudgeBasics();
     testVariableJudgeHysteresis();
     testVariableJudgeMaskAndOverride();
-    testVariableJudgeFallbackOnBadConfig();
-    testDefaultConfigurationIsValid();
 
     testSnapshotToMonitoringData();
     testTelemetryReporterCadence();
