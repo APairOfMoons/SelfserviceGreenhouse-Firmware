@@ -12,7 +12,7 @@
 #ifndef SELFSERVICEGREENHOUSE_FIRMWARE_LOGICALCONFIGURATION_H
 #define SELFSERVICEGREENHOUSE_FIRMWARE_LOGICALCONFIGURATION_H
 
-#include <stdint.h>
+#include <cstdint>
 
 // ---------- 可变配置 ----------
 struct VariableStatics

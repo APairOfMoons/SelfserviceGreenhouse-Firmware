@@ -75,6 +75,16 @@ bool TopicBuilder::statusTopic(char *buffer, std::size_t capacity, const char *d
     return build(buffer, capacity, deviceId, "status");
 }
 
+bool TopicBuilder::configTopic(char *buffer, std::size_t capacity, const char *deviceId)
+{
+    return build(buffer, capacity, deviceId, "config");
+}
+
+bool TopicBuilder::configAckTopic(char *buffer, std::size_t capacity, const char *deviceId)
+{
+    return build(buffer, capacity, deviceId, "config/ack");
+}
+
 bool TopicBuilder::commandTopic(char *buffer, std::size_t capacity, const char *deviceId)
 {
     return build(buffer, capacity, deviceId, "cmd");

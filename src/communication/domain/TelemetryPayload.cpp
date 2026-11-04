@@ -9,10 +9,10 @@
 
 namespace {
 
-/* 0.1 单位整数：四舍五入，NaN／无穷／越界一律回 0，避免未定义行为 */
-int32_t toTenths(double value)
+/* 0.01 单位整数：四舍五入，NaN／无穷／越界一律回 0，避免未定义行为 */
+int32_t toHundredths(double value)
 {
-    const double scaled = value * 10.0;
+    const double scaled = value * 100.0;
 
     if (!((scaled > -2147483649.0) && (scaled < 2147483648.0)))
     {
@@ -38,11 +38,11 @@ std::size_t TelemetryPayload::build(const MonitoringData &data,
                     && writer.append(",\"up\":")
                     && writer.appendUnsigned(uptimeSeconds)
                     && writer.append(",\"t\":")
-                    && writer.appendInt(toTenths(data.temperature))
+                    && writer.appendInt(toHundredths(data.temperature))
                     && writer.append(",\"ah\":")
-                    && writer.appendInt(toTenths(data.air_humidity))
+                    && writer.appendInt(toHundredths(data.air_humidity))
                     && writer.append(",\"sh\":")
-                    && writer.appendInt(toTenths(data.soil_humidity))
+                    && writer.appendInt(toHundredths(data.soil_humidity))
                     && writer.append(",\"lux\":")
                     && writer.appendInt(data.illuminance)
                     && writer.append(",\"water\":")
