@@ -137,7 +137,7 @@ FSP Configuration
       P300 24 DEBUG0_SWCLK - Low - "Peripheral mode" CMOS None "DEBUG0: SWCLK; DEBUG0: TCK; GPT_OPS0: GTOUUP; GPT0: GTIOC0A; SPI0: SSLA1" - IO - - 
       P301 23 - - - - Disabled - - "AGT0: AGTIO0; GPT_OPS0: GTOULO; GPT4: GTIOC4B; ICU0: IRQ06; SCI2: RXD2; SCI2: SCL2; SCI9: CTSRTS9; SPI0: SSLA2" - None - - 
       P302 22 - - - - Disabled - - "GPT_OPS0: GTOUUP; GPT4: GTIOC4A; ICU0: IRQ05; SCI2: SDA2; SCI2: TXD2; SPI0: SSLA3" - None - - 
-      P402 1 - - - - Disabled - - "AGT0: AGTIO0; AGT1: AGTIO1; AGT2: AGTIO2; AGT3: AGTIO3; CAC0: CACREF; CAN0: CRX0; ICU0: IRQ04; RTC0: RTCIC0; SCI4: CTS4; SSI_COMMON0: AUDIO_CLK" - None - - 
+      P402 1 GPIO LIGHT_CTRL - None "Input mode" - None "AGT0: AGTIO0; AGT1: AGTIO1; AGT2: AGTIO2; AGT3: AGTIO3; CAC0: CACREF; CAN0: CRX0; ICU0: IRQ04; RTC0: RTCIC0; SCI4: CTS4; SSI_COMMON0: AUDIO_CLK" - IO - - 
       P407 12 IIC0_SDA0 - Medium - "Peripheral mode" CMOS None "ADC0: ADTRG0; AGT0: AGTIO0; CTSU0: TS03; GPT6: GTIOC6A; IIC0: SDA0; RTC0: RTCOUT; SCI4: CTSRTS4; SPI0: SSLA3; USB_FS0: USB_VBUS" - IO - - 
       P408 11 IIC0_SCL0 - Medium None "Peripheral mode" CMOS None "AGT2: AGTOB2; CTSU0: TS04; GPT_OPS0: GTOWLO; GPT6: GTIOC6B; ICU0: IRQ07; IIC0: SCL0; SCI3: RXD3; SCI3: SCL3; SCI4: CTS4; USB_FS0: USB_ID" - IO - - 
       P409 10 - - - - Disabled - - "AGT2: AGTOA2; CTSU0: TS05; GPT_OPS0: GTOWUP; ICU0: IRQ06; SCI3: SDA3; SCI3: TXD3; USB_FS0: USB_EXICEN" - None - - 
@@ -270,7 +270,7 @@ FSP Configuration
     Instance "g_timer0 Timer, General PWM (r_gpt)"
       General: Name: g_timer0
       General: Channel: 1
-      General: Mode: Periodic
+      General: Mode: Saw-wave PWM
       General: Period: 0x10000
       General: Compare Match: Compare Match A: Status: Disabled
       General: Compare Match: Compare Match A: Compare match value: 0x10000
@@ -284,7 +284,7 @@ FSP Configuration
       General: Compare Match: Compare Match E: Compare match value: 0x10000
       General: Compare Match: Compare Match F: Status: Disabled
       General: Compare Match: Compare Match F: Compare match value: 0x10000
-      General: Period Unit: Kilohertz
+      General: Period Unit: Raw Counts
       Output: Custom Waveform: GTIOA: Initial Output Level: Pin Level Low
       Output: Custom Waveform: GTIOA: Cycle End Output Level: Pin Level Retain
       Output: Custom Waveform: GTIOA: Compare Match Output Level: Pin Level Retain
@@ -294,7 +294,7 @@ FSP Configuration
       Output: Custom Waveform: GTIOB: Compare Match Output Level: Pin Level Retain
       Output: Custom Waveform: GTIOB: Retain Output Level at Count Stop: Disabled
       Output: Custom Waveform: Custom Waveform Enable: Disabled
-      Output: Duty Cycle Percent (only applicable in PWM mode): 50
+      Output: Duty Cycle Percent (only applicable in PWM mode): 0
       Output: GTIOCA Output Enabled: True
       Output: GTIOCA Stop Level: Pin Level Low
       Output: GTIOCB Output Enabled: False

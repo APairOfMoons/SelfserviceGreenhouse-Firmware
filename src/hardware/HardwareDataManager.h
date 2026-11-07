@@ -4,8 +4,7 @@
 
 #ifndef SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
-
-
+#include <cstdint>
 
 namespace HardwareDataManager{
 
@@ -27,7 +26,7 @@ namespace HardwareDataManager{
 
     bool setFanStatus(bool status);
     bool setLightStatus(bool status);
-    bool setHeaterStatus(bool status);
+    bool setHeaterStatus(const uint8_t duty_cycle);
     bool setPumpStatus(bool status);
 
     bool rotateTurntable(int deltaDegrees);
