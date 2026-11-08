@@ -1,13 +1,13 @@
 #include "comm_thread.h"
-                /* Comm Thread entry function */
-                /* pvParameters contains TaskHandle_t */
-                void comm_thread_entry(void * pvParameters)
-                {
-                    FSP_PARAMETER_NOT_USED(pvParameters);
 
-                    /* TODO: add your own code here */
-                    while(1)
-                    {
-                        vTaskDelay(1);
-                    }
-                }
+#include "communication/app/CommunicationService.h"
+
+/* Comm Thread entry function */
+/* pvParameters contains TaskHandle_t */
+extern "C" void comm_thread_entry(void *pvParameters)
+{
+    FSP_PARAMETER_NOT_USED(pvParameters);
+
+    /* 线程主循环，不返回 */
+    CommunicationService::run();
+}
