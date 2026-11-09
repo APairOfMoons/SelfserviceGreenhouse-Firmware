@@ -54,31 +54,45 @@
       <configSetting altId="debug0.swclk.p300" configurationId="debug0.swclk" isUsedByDriver="true" peripheral="DEBUG0"/>
       <configSetting altId="debug0.swdio.p108" configurationId="debug0.swdio" isUsedByDriver="true" peripheral="DEBUG0"/>
       <configSetting altId="gpt1.gtioca.p109" configurationId="gpt1.gtioca" isUsedByDriver="true" peripheral="GPT1"/>
-      <configSetting altId="iic0.scl.p408" configurationId="iic0.scl" peripheral="IIC0"/>
-      <configSetting altId="iic0.sda.p407" configurationId="iic0.sda" peripheral="IIC0"/>
+      <configSetting altId="iic0.scl.p408" configurationId="iic0.scl" isUsedByDriver="true" peripheral="IIC0"/>
+      <configSetting altId="iic0.sda.p407" configurationId="iic0.sda" isUsedByDriver="true" peripheral="IIC0"/>
       <configSetting altId="irq0.irq00.p206" configurationId="irq0.irq00" isUsedByDriver="true" peripheral="ICU0"/>
       <configSetting altId="p000.gpio_mode.gpio_mode_an" configurationId="p000.gpio_mode"/>
       <configSetting altId="p001.input" configurationId="p001"/>
       <configSetting altId="p001.gpio_mode.gpio_mode_in" configurationId="p001.gpio_mode"/>
       <configSetting altId="p100.gpio_mode.gpio_mode_peripheral" configurationId="p100.gpio_mode"/>
       <configSetting altId="p101.gpio_mode.gpio_mode_peripheral" configurationId="p101.gpio_mode"/>
+      <configSetting altId="p103.input" configurationId="p103"/>
+      <configSetting altId="p103.gpio_mode.gpio_mode_in" configurationId="p103.gpio_mode"/>
+      <configSetting altId="p104.input" configurationId="p104"/>
+      <configSetting altId="p104.gpio_mode.gpio_mode_in" configurationId="p104.gpio_mode"/>
       <configSetting altId="p108.gpio_mode.gpio_mode_peripheral" configurationId="p108.gpio_mode"/>
       <configSetting altId="p109.gpio_mode.gpio_mode_peripheral" configurationId="p109.gpio_mode"/>
       <configSetting altId="p111.input" configurationId="p111"/>
       <configSetting altId="p111.gpio_mode.gpio_mode_in" configurationId="p111.gpio_mode"/>
+      <configSetting altId="p200.input" configurationId="p200"/>
+      <configSetting altId="p200.gpio_mode.gpio_mode_in" configurationId="p200.gpio_mode"/>
       <configSetting altId="p206.gpio_irq.gpio_irq_enabled" configurationId="p206.gpio_irq"/>
       <configSetting altId="p206.gpio_mode.gpio_mode_irq" configurationId="p206.gpio_mode"/>
       <configSetting altId="p207.input" configurationId="p207"/>
       <configSetting altId="p207.gpio_mode.gpio_mode_in" configurationId="p207.gpio_mode"/>
       <configSetting altId="p300.gpio_mode.gpio_mode_peripheral" configurationId="p300.gpio_mode"/>
+      <configSetting altId="p301.gpio_mode.gpio_mode_peripheral" configurationId="p301.gpio_mode"/>
+      <configSetting altId="p301.gpio_otype.gpio_otype_n_ch_od" configurationId="p301.gpio_otype"/>
+      <configSetting altId="p302.gpio_mode.gpio_mode_peripheral" configurationId="p302.gpio_mode"/>
+      <configSetting altId="p302.gpio_otype.gpio_otype_n_ch_od" configurationId="p302.gpio_otype"/>
       <configSetting altId="p402.input" configurationId="p402"/>
       <configSetting altId="p402.gpio_mode.gpio_mode_in" configurationId="p402.gpio_mode"/>
       <configSetting altId="p407.gpio_speed.gpio_speed_medium" configurationId="p407.gpio_drivecapacity"/>
       <configSetting altId="p407.gpio_mode.gpio_mode_peripheral" configurationId="p407.gpio_mode"/>
       <configSetting altId="p408.gpio_speed.gpio_speed_medium" configurationId="p408.gpio_drivecapacity"/>
       <configSetting altId="p408.gpio_mode.gpio_mode_peripheral" configurationId="p408.gpio_mode"/>
+      <configSetting altId="p409.input" configurationId="p409"/>
+      <configSetting altId="p409.gpio_mode.gpio_mode_in" configurationId="p409.gpio_mode"/>
       <configSetting altId="sci0.rxd.p100" configurationId="sci0.rxd" isUsedByDriver="true" peripheral="SCI0"/>
       <configSetting altId="sci0.txd.p101" configurationId="sci0.txd" isUsedByDriver="true" peripheral="SCI0"/>
+      <configSetting altId="sci2.scl.p301" configurationId="sci2.scl" peripheral="SCI2"/>
+      <configSetting altId="sci2.sda.p302" configurationId="sci2.sda" peripheral="SCI2"/>
     </pincfg>
   </raPinConfiguration>
 </raConfiguration>
