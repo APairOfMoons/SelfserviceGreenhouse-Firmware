@@ -47,6 +47,12 @@ JLinkSettings.ini
 *.ses
 openocd.log
 
+# ---------- Broker ----------
+# deploy/windows runs only on a developer machine: keep credentials and
+# persisted state out of the repository.
+/src/communication/deploy/
+/src/communication/tests/
+
 # ---------- IDE ----------
 # Note: .settings/ .vscode/ .theia/ are a part of the project.
 /.idea

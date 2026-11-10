@@ -32,12 +32,12 @@ struct CommStatics
 constexpr CommStatics COMM_CONFIGURATION = {
     "GH-0001",
 
-    "YOUR_WIFI_SSID",
-    "YOUR_WIFI_PASSWORD",
+    "LAPTOP-KC3EICKH 0359",
+    "5qD9]816",
 
-    "mqtt.example.com",
+    "192.168.137.1",
     1883,
-    "CHANGE_ME",
+    "Mq#Password",
 
     2000U,
     60000U,
