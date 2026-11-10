@@ -1,4 +1,4 @@
-#Mon Nov 09 21:27:20 CST 2026
+#Tue Nov 10 13:40:06 CST 2026
 com.renesas.cdt.ddsc.content/com.renesas.cdt.ddsc.content.defaultlinkerscript=script/fsp.lld
 com.renesas.cdt.ddsc.contentgen.options/options/suppresswarningspaths=ra/arm,ra/aws
 com.renesas.cdt.ddsc.contentgen.options/options/toolchainversion=23.1.0

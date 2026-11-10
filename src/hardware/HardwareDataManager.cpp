@@ -36,10 +36,49 @@ int readIlluminance() {
   return -1; // Fail
 }
 
-bool readFanStatus() {}
-bool readLightStatus() {}
-bool readHeaterStatus() {}
-bool readPumpStatus() {}
+bool readFanStatus() {
+  bsp_io_level_t level = BSP_IO_LEVEL_LOW;
+  const fsp_err_t err =
+      R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_01, &level);
+  if (FSP_SUCCESS != err) {
+    return false;
+  }
+  return BSP_IO_LEVEL_HIGH == level;
+}
+
+bool readLightStatus() {
+  bsp_io_level_t level = BSP_IO_LEVEL_LOW;
+  const fsp_err_t err =
+      R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_04_PIN_02, &level);
+  if (FSP_SUCCESS != err) {
+    return false;
+  }
+  return BSP_IO_LEVEL_HIGH == level;
+}
+
+bool readHeaterStatus() {
+  if (0U == g_timer0_ctrl.open) {
+    return false;
+  }
+
+  timer_status_t status{};
+  const fsp_err_t err = R_GPT_StatusGet(&g_timer0_ctrl, &status);
+  if (FSP_SUCCESS != err || TIMER_STATE_STOPPED == status.state) {
+    return false;
+  }
+
+  return 2U != g_timer0_ctrl.p_reg->GTUDDTYC_b.OADTY;
+}
+
+bool readPumpStatus() {
+  bsp_io_level_t level = BSP_IO_LEVEL_LOW;
+  const fsp_err_t err =
+      R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_02_PIN_07, &level);
+  if (FSP_SUCCESS != err) {
+    return false;
+  }
+  return BSP_IO_LEVEL_HIGH == level;
+}
 
 bool readWaterLevel() {}
 
@@ -47,12 +86,12 @@ bool readWaterLevel() {}
 
 bool setFanStatus(const bool status) {
   R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_01,
-                    static_cast<bsp_io_level_t>(!status));
+                    static_cast<bsp_io_level_t>(status));
   return true;
 }
 bool setLightStatus(const bool status) {
   R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_04_PIN_02,
-                    static_cast<bsp_io_level_t>(!status));
+                    static_cast<bsp_io_level_t>(status));
   return true;
 }
 bool setHeaterStatus(const uint8_t duty_cycle) {
@@ -101,7 +140,7 @@ bool setHeaterStatus(const uint8_t duty_cycle) {
 }
 bool setPumpStatus(const bool status) {
   R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_02_PIN_07,
-                    static_cast<bsp_io_level_t>(!status));
+                    static_cast<bsp_io_level_t>(status));
   return true;
 }
 
