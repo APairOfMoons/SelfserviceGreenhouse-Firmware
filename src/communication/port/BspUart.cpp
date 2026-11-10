@@ -15,6 +15,22 @@
 #include "r_sci_uart.h"
 
 
+/*
+ * 调试器可见的串口累计量。
+ *
+ * 文件内的 s_rxDropped / s_rxErrors 是内部链接符号，调试器里名字被修饰过，
+ * 不方便按名字查；这里单开一组 C 链接计数专供观察。
+ *
+ * g_uartRxBytes 是判断"模块到底有没有回话"的唯一直接证据：发送成功只说明
+ * 单片机把字节推进了 SCI0，收到字节才说明线序、电平、波特率都对得上。
+ */
+extern "C"
+{
+volatile uint32_t g_uartRxBytes = 0U;
+volatile uint32_t g_uartErrors  = 0U;
+}
+
+
 namespace
 {
 
@@ -74,6 +90,8 @@ extern "C" void uart0_callback(uart_callback_args_t *p_args)
     {
         case UART_EVENT_RX_CHAR:
         {
+            g_uartRxBytes = g_uartRxBytes + 1U;
+
             const uint32_t next = (s_rxHead + 1U) & kRxRingMask;
             if (next != s_rxTail)
             {
@@ -98,6 +116,7 @@ extern "C" void uart0_callback(uart_callback_args_t *p_args)
         case UART_EVENT_ERR_FRAMING:
         case UART_EVENT_ERR_PARITY:
         {
+            g_uartErrors = g_uartErrors + 1U;
             s_rxErrors = s_rxErrors + 1U;
             break;
         }
@@ -122,6 +141,8 @@ bool BspUart::initialize()
     s_rxDropped = 0U;
     s_rxErrors = 0U;
     s_txIdle = true;
+    g_uartRxBytes = 0U;
+    g_uartErrors = 0U;
 
     const fsp_err_t result = R_SCI_UART_Open(&g_uart0_ctrl, &g_uart0_cfg);
     if (result != FSP_SUCCESS)

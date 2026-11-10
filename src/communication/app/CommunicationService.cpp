@@ -27,6 +27,7 @@
 extern "C"
 {
 volatile uint8_t  g_commState   = 0U;   /* CommunicationService::State 的镜像 */
+volatile uint8_t  g_commInit    = 0U;   /* 0=未尝试 1=成功 2=失败（串口或队列） */
 volatile uint32_t g_commSent    = 0U;   /* 已交给模块的报文 */
 volatile uint32_t g_commDropped = 0U;   /* 队列满丢弃 */
 volatile uint32_t g_commFailed  = 0U;   /* 发布失败 */
@@ -404,16 +405,19 @@ bool CommunicationService::initialize()
 
     if (!AtChannel::initialize())
     {
+        g_commInit = 2U;
         return false;
     }
 
     s_queue = commRtosQueueCreate(kQueueDepth, static_cast<uint32_t>(sizeof(OutgoingMessage)));
     if (s_queue == nullptr)
     {
+        g_commInit = 2U;
         return false;
     }
 
     s_initialized = true;
+    g_commInit = 1U;
     return true;
 }
 
