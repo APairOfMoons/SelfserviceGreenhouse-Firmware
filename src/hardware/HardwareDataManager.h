@@ -6,6 +6,13 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 #include <cstdint>
 
+extern volatile bool gI2CTxCplt;
+extern volatile bool gI2CRxCplt;
+
+void I2CWaitTxCplt();
+void I2CWaitRxCplt();
+
+
 namespace HardwareDataManager{
 
     //读取
@@ -29,7 +36,7 @@ namespace HardwareDataManager{
     bool setHeaterStatus(const uint8_t duty_cycle);
     bool setPumpStatus(bool status);
 
-    bool rotateTurntable(int deltaDegrees);
+    bool rotateTurntable(float deltaDegrees);
 };
 
 

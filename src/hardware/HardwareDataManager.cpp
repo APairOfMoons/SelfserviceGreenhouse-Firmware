@@ -6,13 +6,21 @@
 
 #include "common_data.h"
 #include "hal_data.h"
+#include "motor.h"
+#include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
+#include "portmacro.h"
+#include "projdefs.h"
 #include "r_ioport.h"
+#include "task.h"
+
+volatile bool gI2CTxCplt = false;
+volatile bool gI2CRxCplt = false;
 
 namespace HardwareDataManager {
+
 // 读取
-
 double readTemperature() {
-
   return 65535; // Fail
 }
 double readAirHumidity() {
@@ -70,8 +78,8 @@ bool setHeaterStatus(const uint8_t duty_cycle) {
   const auto duty_cycle_counts = static_cast<uint32_t>(
       (static_cast<uint64_t>(info.period_counts) * duty_cycle) / 100U);
 
-  err = R_GPT_DutyCycleSet(&g_timer0_ctrl, duty_cycle_counts,
-                           GPT_IO_PIN_GTIOCA);
+  err =
+      R_GPT_DutyCycleSet(&g_timer0_ctrl, duty_cycle_counts, GPT_IO_PIN_GTIOCA);
   if (FSP_SUCCESS != err) {
     return false;
   }
@@ -97,8 +105,43 @@ bool setPumpStatus(const bool status) {
   return true;
 }
 
-bool rotateTurntable(int deltaDegrees) {
-
-  return false; // Rotate failed
+bool rotateTurntable(const float deltaDegrees) {
+  MotorDevGet()->rotate(deltaDegrees, MOTOR_DIRECTION_CW, 2);
+  return true;
 }
 } // namespace HardwareDataManager
+
+void i2c_callback(i2c_master_callback_args_t *p_args) {
+  switch (p_args->event) {
+  case I2C_MASTER_EVENT_TX_COMPLETE: {
+    gI2CTxCplt = true;
+    break;
+  }
+  case I2C_MASTER_EVENT_RX_COMPLETE: {
+    gI2CRxCplt = true;
+    break;
+  }
+  default: {
+    gI2CTxCplt = gI2CRxCplt = false;
+    break;
+  }
+  }
+}
+
+void I2CWaitTxCplt() {
+  uint16_t wTimeOut = 100;
+  while (!gI2CTxCplt && wTimeOut) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    wTimeOut--;
+  }
+  gI2CTxCplt = false;
+}
+
+void I2CWaitRxCplt() {
+  uint16_t wTimeOut = 100;
+  while (!gI2CRxCplt && wTimeOut) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    wTimeOut--;
+  }
+  gI2CRxCplt = false;
+}
