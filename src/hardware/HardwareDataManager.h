@@ -6,12 +6,17 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 #include <cstdint>
 
-extern volatile bool gI2CTxCplt;
-extern volatile bool gI2CRxCplt;
+extern volatile bool gI2C0TxCplt;
+extern volatile bool gI2C0RxCplt;
 
-void I2CWaitTxCplt();
-void I2CWaitRxCplt();
+extern volatile bool gI2C1TxCplt;
+extern volatile bool gI2C1RxCplt;
 
+void I2C0WaitTxCplt();
+void I2C0WaitRxCplt();
+
+void I2C1WaitTxCplt();
+void I2C1WaitRxCplt();
 
 namespace HardwareDataManager{
 

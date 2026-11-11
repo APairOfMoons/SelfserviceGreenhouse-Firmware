@@ -95,8 +95,8 @@
       <configSetting altId="p409.gpio_mode.gpio_mode_out.low" configurationId="p409.gpio_mode"/>
       <configSetting altId="sci0.rxd.p100" configurationId="sci0.rxd" isUsedByDriver="true" peripheral="SCI0"/>
       <configSetting altId="sci0.txd.p101" configurationId="sci0.txd" isUsedByDriver="true" peripheral="SCI0"/>
-      <configSetting altId="sci2.scl.p301" configurationId="sci2.scl" peripheral="SCI2"/>
-      <configSetting altId="sci2.sda.p302" configurationId="sci2.sda" peripheral="SCI2"/>
+      <configSetting altId="sci2.scl.p301" configurationId="sci2.scl" isUsedByDriver="true" peripheral="SCI2"/>
+      <configSetting altId="sci2.sda.p302" configurationId="sci2.sda" isUsedByDriver="true" peripheral="SCI2"/>
     </pincfg>
   </raPinConfiguration>
 </raConfiguration>

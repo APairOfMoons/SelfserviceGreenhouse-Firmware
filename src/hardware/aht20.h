@@ -4,7 +4,6 @@
 
 #ifndef SELFSERVICEGREENHOUSE_FIRMWARE_AHT20DEV_H
 #define SELFSERVICEGREENHOUSE_FIRMWARE_AHT20DEV_H
-#include <cstdint>
 
 typedef struct aht20 {
   const char *name;

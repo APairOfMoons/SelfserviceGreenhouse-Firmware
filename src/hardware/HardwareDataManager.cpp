@@ -14,8 +14,11 @@
 #include "r_ioport.h"
 #include "task.h"
 
-volatile bool gI2CTxCplt = false;
-volatile bool gI2CRxCplt = false;
+volatile bool gI2C0TxCplt = false;
+volatile bool gI2C0RxCplt = false;
+
+volatile bool gI2C1TxCplt = false;
+volatile bool gI2C1RxCplt = false;
 
 namespace HardwareDataManager {
 
@@ -153,34 +156,69 @@ bool rotateTurntable(const float deltaDegrees) {
 void i2c_callback(i2c_master_callback_args_t *p_args) {
   switch (p_args->event) {
   case I2C_MASTER_EVENT_TX_COMPLETE: {
-    gI2CTxCplt = true;
+    gI2C0TxCplt = true;
     break;
   }
   case I2C_MASTER_EVENT_RX_COMPLETE: {
-    gI2CRxCplt = true;
+    gI2C0RxCplt = true;
     break;
   }
   default: {
-    gI2CTxCplt = gI2CRxCplt = false;
+    gI2C0TxCplt = gI2C0RxCplt = false;
     break;
   }
   }
 }
 
-void I2CWaitTxCplt() {
+void I2C0WaitTxCplt() {
   uint16_t wTimeOut = 100;
-  while (!gI2CTxCplt && wTimeOut) {
+  while (!gI2C0TxCplt && wTimeOut) {
     vTaskDelay(pdMS_TO_TICKS(1));
     wTimeOut--;
   }
-  gI2CTxCplt = false;
+  gI2C0TxCplt = false;
 }
 
-void I2CWaitRxCplt() {
+void I2C0WaitRxCplt() {
   uint16_t wTimeOut = 100;
-  while (!gI2CRxCplt && wTimeOut) {
+  while (!gI2C0RxCplt && wTimeOut) {
     vTaskDelay(pdMS_TO_TICKS(1));
     wTimeOut--;
   }
-  gI2CRxCplt = false;
+  gI2C0RxCplt = false;
+}
+
+void sci_i2c_master_callback(i2c_master_callback_args_t *p_args) {
+  switch (p_args->event) {
+  case I2C_MASTER_EVENT_TX_COMPLETE: {
+    gI2C1TxCplt = true;
+    break;
+  }
+  case I2C_MASTER_EVENT_RX_COMPLETE: {
+    gI2C1RxCplt = true;
+    break;
+  }
+  default: {
+    gI2C1TxCplt = gI2C1RxCplt = false;
+    break;
+  }
+  }
+}
+
+void I2C1WaitTxCplt() {
+  uint16_t wTimeOut = 100;
+  while (!gI2C1TxCplt && wTimeOut) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    wTimeOut--;
+  }
+  gI2C1TxCplt = false;
+}
+
+void I2C1WaitRxCplt() {
+  uint16_t wTimeOut = 100;
+  while (!gI2C1RxCplt && wTimeOut) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    wTimeOut--;
+  }
+  gI2C1RxCplt = false;
 }

@@ -24,15 +24,15 @@ static uint8_t read_status() {
   if (err != FSP_SUCCESS) {
     return 0xFF;
   }
-  I2CWaitRxCplt();
+  I2C0WaitRxCplt();
   return status;
 }
 
 static void reset() {
   uint8_t cmd = AHT20_CMD_RESET;
-  fsp_err_t err = R_IIC_MASTER_Write(&g_i2c_master0_ctrl, &cmd, 1, false);
+  const fsp_err_t err = R_IIC_MASTER_Write(&g_i2c_master0_ctrl, &cmd, 1, false);
   if (err == FSP_SUCCESS) {
-    I2CWaitTxCplt();
+    I2C0WaitTxCplt();
   }
   vTaskDelay(pdMS_TO_TICKS(20));
 }
@@ -45,13 +45,13 @@ static void init() {
   // 1. 上电等待至少 40ms
   vTaskDelay(pdMS_TO_TICKS(40));
   // 2. 读取状态字，检查校准使能位 Bit[3]
-  uint8_t status = read_status();
+  const uint8_t status = read_status();
   if ((status & 0x08) == 0) {
     // 未校准，发送初始化命令（3 字节）
     err = R_IIC_MASTER_Write(&g_i2c_master0_ctrl,
                              const_cast<uint8_t *>(AHT20_CMD_INIT), 3, false);
     if (err == FSP_SUCCESS) {
-      I2CWaitTxCplt();
+      I2C0WaitTxCplt();
     }
     vTaskDelay(pdMS_TO_TICKS(10)); // 等待校准生效
   }
@@ -62,7 +62,7 @@ static void measure() {
   const fsp_err_t err = R_IIC_MASTER_Write(
       &g_i2c_master0_ctrl, const_cast<uint8_t *>(AHT20_CMD_MEASURE), 3, false);
   if (err == FSP_SUCCESS) {
-    I2CWaitTxCplt();
+    I2C0WaitTxCplt();
   }
 }
 
@@ -80,7 +80,7 @@ static void read(double *temperature, double *humidity) {
     // 个字节：Byte0为状态，Byte1~2为湿度，Byte3为湿度低4位+温度高4位，Byte4~5为温度
     const fsp_err_t err = R_IIC_MASTER_Read(&g_i2c_master0_ctrl, data, 6, false);
     if (err == FSP_SUCCESS) {
-      I2CWaitRxCplt();
+      I2C0WaitRxCplt();
     }
     // 检查 Bit[7]：0 为就绪，1 为忙碌中
     if ((data[0] & 0x80) == 0) {
