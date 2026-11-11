@@ -3,16 +3,19 @@
 //
 
 #include "HardwareDataManager.h"
+#include <cmath>
 
+#include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
+#include "aht20.h"
 #include "common_data.h"
 #include "hal_data.h"
 #include "motor.h"
-#include "FreeRTOS.h"
-#include "FreeRTOSConfig.h"
 #include "portmacro.h"
 #include "projdefs.h"
 #include "r_ioport.h"
 #include "task.h"
+#include "veml7700.h"
 
 volatile bool gI2C0TxCplt = false;
 volatile bool gI2C0RxCplt = false;
@@ -22,21 +25,28 @@ volatile bool gI2C1RxCplt = false;
 
 namespace HardwareDataManager {
 
+void peripheral_init() {
+  AHT20hDevGet()->init();
+  veml7700::init();
+}
+
 // 读取
 double readTemperature() {
-  return 65535; // Fail
+  double temp, humi;
+  AHT20hDevGet()->read(&temp, &humi);
+  return temp;
 }
 double readAirHumidity() {
-
-  return -1; // Fail
+  double temp, humi;
+  AHT20hDevGet()->read(&temp, &humi);
+  return humi;
 }
 double readSoilHumidity() {
 
   return -1; // Fail
 }
-int readIlluminance() {
-
-  return -1; // Fail
+double readIlluminance() {
+  return veml7700::read();
 }
 
 bool readFanStatus() {

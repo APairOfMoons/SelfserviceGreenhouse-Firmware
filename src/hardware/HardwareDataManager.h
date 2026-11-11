@@ -18,31 +18,30 @@ void I2C0WaitRxCplt();
 void I2C1WaitTxCplt();
 void I2C1WaitRxCplt();
 
-namespace HardwareDataManager{
+namespace HardwareDataManager {
+void peripheral_init();
+// 读取
 
-    //读取
+double readTemperature();
+double readAirHumidity();
+double readSoilHumidity();
+double readIlluminance();
 
-    double readTemperature();
-    double readAirHumidity();
-    double readSoilHumidity();
-    int readIlluminance();
+bool readFanStatus();
+bool readLightStatus();
+bool readHeaterStatus();
+bool readPumpStatus();
 
-    bool readFanStatus();
-    bool readLightStatus();
-    bool readHeaterStatus();
-    bool readPumpStatus();
+bool readWaterLevel();
 
-    bool readWaterLevel();
+// 操作
 
-    // 操作
+bool setFanStatus(bool status);
+bool setLightStatus(bool status);
+bool setHeaterStatus(const uint8_t duty_cycle);
+bool setPumpStatus(bool status);
 
-    bool setFanStatus(bool status);
-    bool setLightStatus(bool status);
-    bool setHeaterStatus(const uint8_t duty_cycle);
-    bool setPumpStatus(bool status);
+bool rotateTurntable(float deltaDegrees);
+}; // namespace HardwareDataManager
 
-    bool rotateTurntable(float deltaDegrees);
-};
-
-
-#endif //SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
+#endif // SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
