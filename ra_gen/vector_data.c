@@ -15,6 +15,7 @@
             [8] = iic_master_eri_isr, /* IIC0 ERI (Transfer error) */
             [9] = sci_i2c_txi_isr, /* SCI2 TXI (Transmit data empty) */
             [10] = sci_i2c_tei_isr, /* SCI2 TEI (Transmit end) */
+            [11] = adc_scan_end_isr, /* ADC0 SCAN END (End of A/D scanning operation) */
         };
         #if BSP_FEATURE_ICU_HAS_IELSR
         const bsp_interrupt_event_t g_interrupt_event_link_select[BSP_ICU_VECTOR_NUM_ENTRIES] =
@@ -30,6 +31,7 @@
             [8] = BSP_PRV_VECT_ENUM(EVENT_IIC0_ERI,GROUP0), /* IIC0 ERI (Transfer error) */
             [9] = BSP_PRV_VECT_ENUM(EVENT_SCI2_TXI,GROUP1), /* SCI2 TXI (Transmit data empty) */
             [10] = BSP_PRV_VECT_ENUM(EVENT_SCI2_TEI,GROUP2), /* SCI2 TEI (Transmit end) */
+            [11] = BSP_PRV_VECT_ENUM(EVENT_ADC0_SCAN_END,GROUP3), /* ADC0 SCAN END (End of A/D scanning operation) */
         };
         #endif
         #endif

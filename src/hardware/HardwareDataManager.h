@@ -12,11 +12,15 @@ extern volatile bool gI2C0RxCplt;
 extern volatile bool gI2C1TxCplt;
 extern volatile bool gI2C1RxCplt;
 
+extern volatile bool scan_complete_flag;
+
 void I2C0WaitTxCplt();
 void I2C0WaitRxCplt();
 
 void I2C1WaitTxCplt();
 void I2C1WaitRxCplt();
+
+void ADC0WaitScanCplt();
 
 namespace HardwareDataManager {
 void peripheral_init();
@@ -24,7 +28,7 @@ void peripheral_init();
 
 double readTemperature();
 double readAirHumidity();
-double readSoilHumidity();
+uint16_t readSoilHumidity();
 double readIlluminance();
 
 bool readFanStatus();

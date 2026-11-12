@@ -6,8 +6,8 @@
 /* Common macro for FSP header files. There is also a corresponding FSP_FOOTER macro at the end of this file. */
 FSP_HEADER
 
-#define SOIL_HUMIDITY (BSP_IO_PORT_00_PIN_00)
-#define FAN_CTRL (BSP_IO_PORT_00_PIN_01)
+#define SOIL_HUMIDITY (BSP_IO_PORT_00_PIN_01)
+#define FAN_CTRL (BSP_IO_PORT_00_PIN_02)
 #define ESP01S (BSP_IO_PORT_01_PIN_00)
 #define IN1 (BSP_IO_PORT_01_PIN_03)
 #define IN2 (BSP_IO_PORT_01_PIN_04)

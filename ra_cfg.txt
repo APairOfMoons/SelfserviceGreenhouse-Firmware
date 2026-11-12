@@ -112,9 +112,9 @@ FSP Configuration
     R7FA4M2AD3CFL.pincfg -> g_bsp_pin_cfg
       AVCC0 42 ANALOG0_AVCC0 - - - - - - - - IO "Read only" - 
       AVSS0 43 ANALOG0_AVSS0 - - - - - - - - IO "Read only" - 
-      P000 48 ADC0_AN000 SOIL_HUMIDITY - - "Analog mode" - None "ADC0: AN000; ICU0: IRQ06" - IO - - 
-      P001 47 GPIO FAN_CTRL - None "Output mode (Initial Low)" CMOS - "ADC0: AN001; ICU0: IRQ07" - IO - - 
-      P002 46 - - - - Disabled - - "ADC0: AN002; ICU0: IRQ08" - None - - 
+      P000 48 - - - - Disabled - - "ADC0: AN000; ICU0: IRQ06" - None - - 
+      P001 47 ADC0_AN001 SOIL_HUMIDITY - - "Analog mode" - None "ADC0: AN001; ICU0: IRQ07" - IO - - 
+      P002 46 GPIO FAN_CTRL - None "Output mode (Initial Low)" CMOS - "ADC0: AN002; ICU0: IRQ08" - IO - - 
       P013 40 - - - - Disabled - - "ADC0: AN011; ANALOG0: VREFL" - None - - 
       P014 39 - - - - Disabled - - "ADC0: AN012; DAC0: DA0" - None - - 
       P015 38 - - - - Disabled - - "ADC0: AN013; DAC1: DA1; ICU0: IRQ13" - None - - 
@@ -198,6 +198,9 @@ FSP Configuration
     Parameter Checking: Default (BSP)
     DTC on Transmission and Reception: Disabled
     10-bit slave addressing: Disabled
+    
+  Module "ADC (r_adc)"
+    Parameter Checking: Default (BSP)
     
   FreeRTOS
     General: Custom FreeRTOSConfig.h: 
@@ -410,6 +413,43 @@ FSP Configuration
       Callback: sci_i2c_master_callback
       Interrupt Priority Level: Priority 12
       RX Interrupt Priority Level [Only used when DTC is enabled]: Disabled
+      
+    Instance "g_adc0 ADC (r_adc)"
+      General: Name: g_adc0
+      General: Unit: 0
+      General: Resolution: 12-Bit
+      General: Alignment: Right
+      General: Clear after read: On
+      General: Mode: Single Scan
+      General: Double-trigger: Disabled
+      Input: Channel Scan Mask (channel availability varies by MCU): Channel 1
+      Input: Group B Scan Mask (channel availability varies by MCU): 
+      Interrupts: Normal/Group A Trigger: Software
+      Interrupts: Group B Trigger: Disabled
+      Interrupts: Group Priority (Valid only in Group Scan Mode): Group A cannot interrupt Group B
+      Input: Add/Average Count: Disabled
+      Input: Reference Voltage control: VREFH0/VREFH
+      Input: Addition/Averaging Mask (channel availability varies by MCU and unit): 
+      Input: Sample and Hold: Sample and Hold Channels (Available only on selected MCUs): 
+      Input: Sample and Hold: Sample Hold States (Applies only to channels 0, 1, 2): 24
+      Input: Window Compare: Window Mode: Disabled
+      Input: Window Compare: Event Output: OR
+      Input: Window Compare: Window A: Enable: Disabled
+      Input: Window Compare: Window A: Channels to compare (channel availability varies by MCU and unit): 
+      Input: Window Compare: Window A: Channel comparison mode (channel availability varies by MCU and unit): 
+      Input: Window Compare: Window A: Lower Reference: 0
+      Input: Window Compare: Window A: Upper Reference: 0
+      Input: Window Compare: Window B: Enable: Disabled
+      Input: Window Compare: Window B: Channel to compare (channel availability varies by MCU and unit): Channel 0
+      Input: Window Compare: Window B: Comparison mode: Less Than or Outside Window
+      Input: Window Compare: Window B: Lower Reference: 0
+      Input: Window Compare: Window B: Upper Reference: 0
+      Interrupts: Callback: adc0_callback
+      Interrupts: Scan End Interrupt Priority: Priority 4
+      Interrupts: Scan End Group B Interrupt Priority: Disabled
+      Interrupts: Window Compare A Interrupt Priority: Disabled
+      Interrupts: Window Compare B Interrupt Priority: Disabled
+      Extra: ADC Ring Buffer: Disabled
       
   Thread "New Thread"
     Symbol: new_thread0

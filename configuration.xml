@@ -224,6 +224,10 @@
       <description>SCI I2C Master Interface</description>
       <originalPack>Renesas.RA.6.6.0.pack</originalPack>
     </component>
+    <component apiversion="" class="HAL Drivers" condition="" group="all" subgroup="r_adc" variant="" vendor="Renesas" version="6.6.0">
+      <description>A/D Converter</description>
+      <originalPack>Renesas.RA.6.6.0.pack</originalPack>
+    </component>
   </raComponentSelection>
   <raElcConfiguration/>
   <raIcuConfiguration/>
@@ -373,6 +377,43 @@
       <property id="module.driver.i2c.ipl" value="board.icu.common.irq.priority12"/>
       <property id="module.driver.i2c.rx_ipl" value="_disabled"/>
     </module>
+    <module id="module.driver.adc_on_adc.1787721338">
+      <property id="module.driver.adc.name" value="g_adc0"/>
+      <property id="module.driver.adc.unit" value="0"/>
+      <property id="module.driver.adc.resolution" value="module.driver.adc.resolution.resolution_12_bit"/>
+      <property id="module.driver.adc.alignment" value="module.driver.adc.alignment.alignment_right"/>
+      <property id="module.driver.adc.clearing" value="module.driver.adc.clearing.clear_after_read_on"/>
+      <property id="module.driver.adc.mode" value="module.driver.adc.mode.mode_single_scan"/>
+      <property id="module.driver.adc.mode.dt" value="module.driver.adc.mode.dt.disabled"/>
+      <property id="module.driver.adc.scan_mask" value="module.driver.adc.scan_mask.channel_1"/>
+      <property id="module.driver.adc.scan_mask_group_b" value=""/>
+      <property id="module.driver.adc.trigger" value="enum.driver.adc.trigger.trigger_software"/>
+      <property id="module.driver.adc.trigger_group_b" value="_disabled"/>
+      <property id="module.driver.adc.priority_group_a" value="module.driver.adc.priority_group_a.group_a_priority_off"/>
+      <property id="module.driver.adc.add_average_count" value="module.driver.adc.add_average_count.add_off"/>
+      <property id="module.driver.adc.adc_vref_control" value="module.driver.adc.adc_vref_control.vrefh"/>
+      <property id="module.driver.adc.add_mask" value=""/>
+      <property id="module.driver.adc.sample_hold_mask" value=""/>
+      <property id="module.driver.adc.sample_hold_states" value="24"/>
+      <property id="module.driver.adc.compare.window_mode" value="module.driver.adc.compare.window_mode.disabled"/>
+      <property id="module.driver.adc.compare.event_mode" value="module.driver.adc.compare.event_mode.or"/>
+      <property id="module.driver.adc.compare.window_a.enable" value="module.driver.adc.compare.window_a.enable.disabled"/>
+      <property id="module.driver.adc.compare.window_a.channels" value=""/>
+      <property id="module.driver.adc.compare.window_a.channel_mode" value=""/>
+      <property id="module.driver.adc.compare.window_a.ref_lower" value="0"/>
+      <property id="module.driver.adc.compare.window_a.ref_upper" value="0"/>
+      <property id="module.driver.adc.compare.window_b.enable" value="module.driver.adc.compare.window_b.enable.disabled"/>
+      <property id="module.driver.adc.compare.window_b.channel" value="module.driver.adc.compare.window_b.channel.channel_0"/>
+      <property id="module.driver.adc.compare.window_b.mode" value="module.driver.adc.compare.window_b.mode.less_outside"/>
+      <property id="module.driver.adc.compare.window_b.ref_lower" value="0"/>
+      <property id="module.driver.adc.compare.window_b.ref_upper" value="0"/>
+      <property id="module.driver.adc.p_callback" value="adc0_callback"/>
+      <property id="module.driver.adc.scan_end_ipl" value="board.icu.common.irq.priority4"/>
+      <property id="module.driver.adc.scan_end_b_ipl" value="_disabled"/>
+      <property id="module.driver.adc.window_a_ipl" value="_disabled"/>
+      <property id="module.driver.adc.window_b_ipl" value="_disabled"/>
+      <property id="module.driver.adc.adbuf" value="module.driver.adc.adbuf.disabled"/>
+    </module>
     <context id="_hal.0">
       <stack module="module.driver.ioport_on_ioport.0"/>
       <stack module="module.middleware.rm_freertos_port.0"/>
@@ -381,6 +422,7 @@
       <stack module="module.driver.uart_on_sci_uart.1011019019"/>
       <stack module="module.driver.i2c_on_iic_master.222393797"/>
       <stack module="module.driver.i2c_on_sci_i2c.515816864"/>
+      <stack module="module.driver.adc_on_adc.1787721338"/>
     </context>
     <context id="rtos.awsfreertos.thread.0">
       <property id="_symbol" value="new_thread0"/>
@@ -401,6 +443,9 @@
       <property id="rtos.awsfreertos.thread.allocation" value="rtos.awsfreertos.thread.allocation.static"/>
       <property id="rtos.awsfreertos.thread.secure_context" value="rtos.awsfreertos.thread.secure_context.enable"/>
     </context>
+    <config id="config.driver.adc">
+      <property id="config.driver.adc.param_checking_enable" value="config.driver.adc.param_checking_enable.bsp"/>
+    </config>
     <config id="config.driver.iic_master">
       <property id="config.driver.iic_master.param_checking_enable" value="config.driver.iic_master.param_checking_enable.bsp"/>
       <property id="config.driver.iic_master.dtc_enable" value="config.driver.iic_master.dtc_enable.disabled"/>
@@ -501,8 +546,8 @@
     </config>
   </raModuleConfiguration>
   <raPinConfiguration>
-    <symbolicName propertyId="p000.symbolic_name" value="SOIL_HUMIDITY"/>
-    <symbolicName propertyId="p001.symbolic_name" value="FAN_CTRL"/>
+    <symbolicName propertyId="p001.symbolic_name" value="SOIL_HUMIDITY"/>
+    <symbolicName propertyId="p002.symbolic_name" value="FAN_CTRL"/>
     <symbolicName propertyId="p100.symbolic_name" value="ESP01S"/>
     <symbolicName propertyId="p103.symbolic_name" value="IN1"/>
     <symbolicName propertyId="p104.symbolic_name" value="IN2"/>
@@ -516,7 +561,7 @@
     <symbolicName propertyId="p408.symbolic_name" value="AHT20"/>
     <symbolicName propertyId="p409.symbolic_name" value="IN4"/>
     <pincfg active="true" name="R7FA4M2AD3CFL.pincfg" selected="true" symbol="g_bsp_pin_cfg">
-      <configSetting altId="adc0.an00.p000" configurationId="adc0.an00"/>
+      <configSetting altId="adc0.an01.p001" configurationId="adc0.an01"/>
       <configSetting altId="adc0.mode.custom" configurationId="adc0.mode"/>
       <configSetting altId="debug0.mode.swd" configurationId="debug0.mode"/>
       <configSetting altId="debug0.swclk.p300" configurationId="debug0.swclk"/>
@@ -529,10 +574,10 @@
       <configSetting altId="iic0.sda.p407" configurationId="iic0.sda"/>
       <configSetting altId="irq0.irq00.p206" configurationId="irq0.irq00"/>
       <configSetting altId="irq0.mode.enabled" configurationId="irq0.mode"/>
-      <configSetting altId="p000.adc0.an00" configurationId="p000"/>
-      <configSetting altId="p000.gpio_mode.gpio_mode_an" configurationId="p000.gpio_mode"/>
-      <configSetting altId="p001.output.low" configurationId="p001"/>
-      <configSetting altId="p001.gpio_mode.gpio_mode_out.low" configurationId="p001.gpio_mode"/>
+      <configSetting altId="p001.adc0.an01" configurationId="p001"/>
+      <configSetting altId="p001.gpio_mode.gpio_mode_an" configurationId="p001.gpio_mode"/>
+      <configSetting altId="p002.output.low" configurationId="p002"/>
+      <configSetting altId="p002.gpio_mode.gpio_mode_out.low" configurationId="p002.gpio_mode"/>
       <configSetting altId="p100.sci0.rxd" configurationId="p100"/>
       <configSetting altId="p100.gpio_mode.gpio_mode_peripheral" configurationId="p100.gpio_mode"/>
       <configSetting altId="p101.sci0.txd" configurationId="p101"/>

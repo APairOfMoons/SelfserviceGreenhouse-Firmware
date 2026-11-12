@@ -3,13 +3,12 @@
 //
 
 #include "HardwareDataManager.h"
-#include <cmath>
 
-#include "FreeRTOS.h"
-#include "FreeRTOSConfig.h"
 #include "aht20.h"
 #include "common_data.h"
 #include "hal_data.h"
+#include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "motor.h"
 #include "portmacro.h"
 #include "projdefs.h"
@@ -28,6 +27,9 @@ namespace HardwareDataManager {
 void peripheral_init() {
   aht20::init();
   veml7700::init();
+  R_ADC_Open(&g_adc0_ctrl, &g_adc0_cfg);
+  R_ADC_ScanCfg(&g_adc0_ctrl, &g_adc0_channel_cfg);
+  (void)R_ADC_ScanStart(&g_adc0_ctrl);
 }
 
 // 读取
@@ -41,18 +43,20 @@ double readAirHumidity() {
   aht20::read(&temp, &humi);
   return humi;
 }
-double readSoilHumidity() {
+uint16_t readSoilHumidity() { // 2510 920
+  R_ADC_ScanStart(&g_adc0_ctrl);
+  ADC0WaitScanCplt();
+  uint16_t data;
+  R_ADC_Read(&g_adc0_ctrl, ADC_CHANNEL_1, &data);
 
-  return -1; // Fail
+  return data;
 }
-double readIlluminance() {
-  return veml7700::read();
-}
+double readIlluminance() { return veml7700::read(); }
 
 bool readFanStatus() {
   bsp_io_level_t level = BSP_IO_LEVEL_LOW;
   const fsp_err_t err =
-      R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_01, &level);
+      R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_02, &level);
   if (FSP_SUCCESS != err) {
     return false;
   }
@@ -98,7 +102,7 @@ bool readWaterLevel() {}
 // 操作
 
 bool setFanStatus(const bool status) {
-  R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_01,
+  R_IOPORT_PinWrite(&g_ioport_ctrl, BSP_IO_PORT_00_PIN_02,
                     static_cast<bsp_io_level_t>(status));
   return true;
 }
@@ -231,4 +235,19 @@ void I2C1WaitRxCplt() {
     wTimeOut--;
   }
   gI2C1RxCplt = false;
+}
+
+volatile bool scan_complete_flag = false;
+void adc0_callback(adc_callback_args_t *p_args) {
+  FSP_PARAMETER_NOT_USED(p_args);
+  scan_complete_flag = true;
+}
+
+void ADC0WaitScanCplt() {
+  uint16_t wTimeOut = 100;
+  while (!scan_complete_flag && wTimeOut) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    wTimeOut--;
+  }
+  scan_complete_flag = false;
 }

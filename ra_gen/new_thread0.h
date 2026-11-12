@@ -7,7 +7,7 @@
                 #include "semphr.h"
                 #include "hal_data.h"
                 #ifdef __cplusplus
-                extern "C" void new_thread0_entry(const void * pvParameters);
+                extern "C" void new_thread0_entry(void * pvParameters);
                 #else
                 extern void new_thread0_entry(void * pvParameters);
                 #endif

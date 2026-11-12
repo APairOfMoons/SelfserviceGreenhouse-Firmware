@@ -4,13 +4,14 @@
 
 #include "aht20.h"
 
-#include "FreeRTOS.h"
-#include "FreeRTOSConfig.h"
 #include "HardwareDataManager.h"
 #include "hal_data.h"
+#include "r_iic_master.h"
+
+#include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "portmacro.h"
 #include "projdefs.h"
-#include "r_iic_master.h"
 #include "task.h"
 
 constexpr uint8_t AHT20_CMD_INIT[3] = {0xBE, 0x08, 0x00};
@@ -37,7 +38,7 @@ void reset() {
   vTaskDelay(pdMS_TO_TICKS(20));
 }
 
-static void init() {
+void init() {
   fsp_err_t err = R_IIC_MASTER_Open(&g_i2c_master0_ctrl, &g_i2c_master0_cfg);
   if (err != FSP_SUCCESS && err != FSP_ERR_ALREADY_OPEN) {
     return;
