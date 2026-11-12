@@ -26,19 +26,19 @@ volatile bool gI2C1RxCplt = false;
 namespace HardwareDataManager {
 
 void peripheral_init() {
-  AHT20hDevGet()->init();
+  aht20::init();
   veml7700::init();
 }
 
 // 读取
 double readTemperature() {
   double temp, humi;
-  AHT20hDevGet()->read(&temp, &humi);
+  aht20::read(&temp, &humi);
   return temp;
 }
 double readAirHumidity() {
   double temp, humi;
-  AHT20hDevGet()->read(&temp, &humi);
+  aht20::read(&temp, &humi);
   return humi;
 }
 double readSoilHumidity() {

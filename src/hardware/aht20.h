@@ -4,14 +4,14 @@
 
 #ifndef SELFSERVICEGREENHOUSE_FIRMWARE_AHT20DEV_H
 #define SELFSERVICEGREENHOUSE_FIRMWARE_AHT20DEV_H
+#include <cstdint>
 
-typedef struct aht20 {
-  const char *name;
-  void (*init)();
-  void (*read)(double *temperature, double *humidity);
-  void (*reset)();
-} AHT20Dev, *PAHT20Dev;
-
-AHT20Dev *AHT20hDevGet();
+namespace aht20 {
+uint8_t read_status();
+void reset();
+void measure();
+void init();
+void read(double *temperature, double *humidity);
+} // namespace aht20
 
 #endif // SELFSERVICEGREENHOUSE_FIRMWARE_AHT20DEV_H

@@ -4,20 +4,20 @@
 
 #include "aht20.h"
 
-#include "HardwareDataManager.h"
-#include "hal_data.h"
-#include "r_iic_master.h"
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
+#include "HardwareDataManager.h"
+#include "hal_data.h"
 #include "portmacro.h"
 #include "projdefs.h"
+#include "r_iic_master.h"
 #include "task.h"
 
 constexpr uint8_t AHT20_CMD_INIT[3] = {0xBE, 0x08, 0x00};
 constexpr uint8_t AHT20_CMD_MEASURE[3] = {0xAC, 0x33, 0x00};
 constexpr uint8_t AHT20_CMD_RESET = 0xBA;
-
-static uint8_t read_status() {
+namespace aht20 {
+uint8_t read_status() {
   uint8_t status = 0;
   const fsp_err_t err =
       R_IIC_MASTER_Read(&g_i2c_master0_ctrl, &status, 1, false);
@@ -28,7 +28,7 @@ static uint8_t read_status() {
   return status;
 }
 
-static void reset() {
+void reset() {
   uint8_t cmd = AHT20_CMD_RESET;
   const fsp_err_t err = R_IIC_MASTER_Write(&g_i2c_master0_ctrl, &cmd, 1, false);
   if (err == FSP_SUCCESS) {
@@ -57,7 +57,7 @@ static void init() {
   }
 }
 
-static void measure() {
+void measure() {
   // 发送触发测量命令（3 字节）
   const fsp_err_t err = R_IIC_MASTER_Write(
       &g_i2c_master0_ctrl, const_cast<uint8_t *>(AHT20_CMD_MEASURE), 3, false);
@@ -66,7 +66,7 @@ static void measure() {
   }
 }
 
-static void read(double *temperature, double *humidity) {
+void read(double *temperature, double *humidity) {
   if (temperature == nullptr || humidity == nullptr) {
     return;
   }
@@ -78,7 +78,8 @@ static void read(double *temperature, double *humidity) {
     vTaskDelay(pdMS_TO_TICKS(75));
     // 直接读取 6
     // 个字节：Byte0为状态，Byte1~2为湿度，Byte3为湿度低4位+温度高4位，Byte4~5为温度
-    const fsp_err_t err = R_IIC_MASTER_Read(&g_i2c_master0_ctrl, data, 6, false);
+    const fsp_err_t err =
+        R_IIC_MASTER_Read(&g_i2c_master0_ctrl, data, 6, false);
     if (err == FSP_SUCCESS) {
       I2C0WaitRxCplt();
     }
@@ -106,8 +107,4 @@ static void read(double *temperature, double *humidity) {
   *temperature =
       (static_cast<double>(raw_temperature) / resolution) * 200.0 - 50.0;
 }
-
-static AHT20Dev g_aht20_dev = {
-    .name = "AHT20", .init = init, .read = read, .reset = reset};
-
-AHT20Dev *AHT20hDevGet() { return &g_aht20_dev; }
+} // namespace aht20
