@@ -76,13 +76,13 @@ void init() {
                                           .als_int_en = ALS_INT_DIS,
                                           .reserved1 = 0,
                                           .als_pers = ALS_PERS_1,
-                                          .als_it = ALS_IT_800ms,
+                                          .als_it = ALS_IT_400ms,
                                           .reserved2 = 0,
-                                          .als_gain = ALS_GAIN_1,
+                                          .als_gain = ALS_GAIN_1_8,
                                           .reserved3 = 0}};
 
   constexpr PsmReg psm_reg = {
-      .bits = {.psm_en = PSM_EN_EN, .psm = PSM_M4, .reserved = 0}};
+      .bits = {.psm_en = PSM_EN_EN, .psm = PSM_M3, .reserved = 0}};
 
   uint8_t buffer[3];
   buffer[0] = 0x00;
@@ -113,7 +113,7 @@ double read() {
   const auto raw_als = static_cast<uint16_t>(
       buffer[0] | (static_cast<uint16_t>(buffer[1]) << 8));
 
-  const double resolution = get_resolution(ALS_GAIN_1, ALS_IT_800ms);
+  const double resolution = get_resolution(ALS_GAIN_1_8, ALS_IT_400ms);
   double lux_val = static_cast<double>(raw_als) * resolution;
 
   if (lux_val > 1000.0) {
@@ -130,9 +130,9 @@ void power_up(const bool enable) {
                .als_int_en = ALS_INT_DIS,
                .reserved1 = 0,
                .als_pers = ALS_PERS_1,
-               .als_it = ALS_IT_800ms,
+               .als_it = ALS_IT_400ms,
                .reserved2 = 0,
-               .als_gain = ALS_GAIN_1,
+               .als_gain = ALS_GAIN_1_8,
                .reserved3 = 0}};
 
   uint8_t buffer[3];
