@@ -130,7 +130,11 @@ bool readPumpStatus() {
   return BSP_IO_LEVEL_HIGH == level;
 }
 
-bool readWaterLevel() {}
+bool readWaterLevel() {
+  bsp_io_level_t has_water;
+  R_IOPORT_PinRead(&g_ioport_ctrl, BSP_IO_PORT_02_PIN_06, &has_water);
+  return has_water;
+}
 
 // 操作
 
