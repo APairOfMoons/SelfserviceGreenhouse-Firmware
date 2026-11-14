@@ -130,7 +130,7 @@ FSP Configuration
       P112 29 - - - - Disabled - - "AGT5: AGTOB5; GPT3: GTIOC3B; QSPI0: QSSL; SCI1: SCK1; SCI2: SDA2; SCI2: TXD2; SPI0: SSLA0; SSI0: SSIBCK0" - None - - 
       P200 21 - - - - Disabled - - "ICU0: NMI" - None - - 
       P201 20 - - - - Disabled - - "SYSTEM0: MD" - None - - 
-      P206 18 ICU0_IRQ00 WARTERMARK_IRQ - IRQ00 "IRQ mode" - None "CTSU0: TS02; GPT_OPS0: GTIU; ICU0: IRQ00; IIC1: SDA1; SCI4: RXD4; SCI4: SCL4; SCI9: CTS9; SDHI0: SD0DAT2; SPI0: SSLA1; SSI0: SSIDATA0; USB_FS0: USB_VBUSEN" - IO - - 
+      P206 18 GPIO WARTERMARK_IRQ - None "Input mode" - None "CTSU0: TS02; GPT_OPS0: GTIU; ICU0: IRQ00; IIC1: SDA1; SCI4: RXD4; SCI4: SCL4; SCI9: CTS9; SDHI0: SD0DAT2; SPI0: SSLA1; SSI0: SSIDATA0; USB_FS0: USB_VBUSEN" - IO - - 
       P207 17 GPIO PUMP_CTRL Low - "Output mode (Initial Low)" CMOS - "CTSU0: TSCAP; QSPI0: QSSL; SCI4: SDA4; SCI4: TXD4; SPI0: SSLA2" - IO - - 
       P212 8 - - - - Disabled - - "AGT1: AGTEE1; CGC0: EXTAL; GPT_POEG3: GTETRGD; GPT0: GTIOC0B; ICU0: IRQ03; SCI1: RXD1; SCI1: SCL1" - None - - 
       P213 7 - - - - Disabled - - "AGT2: AGTEE2; CGC0: XTAL; GPT_POEG2: GTETRGC; GPT0: GTIOC0A; ICU0: IRQ02; SCI1: SDA1; SCI1: TXD1" - None - - 
@@ -177,9 +177,6 @@ FSP Configuration
     Parameter Checking: Default (BSP)
     Pin Output Support: Enabled
     Write Protect Enable: Disabled
-    
-  Module "External IRQ (r_icu)"
-    Parameter Checking: Default (BSP)
     
   Module "UART (r_sci_uart)"
     Parameter Checking: Default (BSP)
@@ -345,16 +342,6 @@ FSP Configuration
       Extra Features: Interrupt Skipping (Channels with GTITC only): Skip ADC Events: None
       Extra Features: Output Disable: GTIOCA Disable Setting: Disable Prohibited
       Extra Features: Output Disable: GTIOCB Disable Setting: Disable Prohibited
-      
-    Instance "g_external_irq0 External IRQ (r_icu)"
-      Name: g_external_irq0
-      Channel: 0
-      Trigger: Rising
-      Digital Filtering: Enabled
-      Filter Source: PCLK filter
-      Digital Filtering Sample Clock (Only valid when Digital Filtering is Enabled): PCLK / 64
-      Callback: NULL
-      Pin Interrupt Priority: Priority 12
       
     Instance "g_uart0 UART (r_sci_uart)"
       General: Name: g_uart0

@@ -208,10 +208,6 @@
       <description>General PWM Timer</description>
       <originalPack>Renesas.RA.6.6.0.pack</originalPack>
     </component>
-    <component apiversion="" class="HAL Drivers" condition="" group="all" subgroup="r_icu" variant="" vendor="Renesas" version="6.6.0">
-      <description>External Interrupt</description>
-      <originalPack>Renesas.RA.6.6.0.pack</originalPack>
-    </component>
     <component apiversion="" class="HAL Drivers" condition="" group="all" subgroup="r_sci_uart" variant="" vendor="Renesas" version="6.6.0">
       <description>SCI UART</description>
       <originalPack>Renesas.RA.6.6.0.pack</originalPack>
@@ -308,16 +304,6 @@
       <property id="module.driver.timer.interrupt_skip.adc" value="module.driver.timer.interrupt_skip.skip_sources.interrupt_skip.adc.none"/>
       <property id="module.driver.timer.gtioca_disable_setting" value="module.driver.timer.gtioca_disable_setting.gtioc_disable_prohibited"/>
       <property id="module.driver.timer.gtiocb_disable_setting" value="module.driver.timer.gtiocb_disable_setting.gtioc_disable_prohibited"/>
-    </module>
-    <module id="module.driver.external_irq_on_icu.1858415386">
-      <property id="module.driver.external_irq.name" value="g_external_irq0"/>
-      <property id="module.driver.external_irq.channel" value="0"/>
-      <property id="module.driver.external_irq.trigger" value="module.driver.external_irq.trigger.trig_rising"/>
-      <property id="module.driver.external_irq.filter_enable" value="module.driver.external_irq.filter_enable.true"/>
-      <property id="module.driver.external_irq.filter_source" value="module.driver.external_irq.filter_source.pclk"/>
-      <property id="module.driver.external_irq.clock_source_div" value="module.driver.external_irq.clock_source_div.clock_source_div_by_64"/>
-      <property id="module.driver.external_irq.p_callback" value="NULL"/>
-      <property id="module.driver.external_irq.ipl" value="board.icu.common.irq.priority12"/>
     </module>
     <module id="module.driver.uart_on_sci_uart.1011019019">
       <property id="module.driver.uart.name" value="g_uart0"/>
@@ -418,7 +404,6 @@
       <stack module="module.driver.ioport_on_ioport.0"/>
       <stack module="module.middleware.rm_freertos_port.0"/>
       <stack module="module.driver.timer_on_gpt.440345529"/>
-      <stack module="module.driver.external_irq_on_icu.1858415386"/>
       <stack module="module.driver.uart_on_sci_uart.1011019019"/>
       <stack module="module.driver.i2c_on_iic_master.222393797"/>
       <stack module="module.driver.i2c_on_sci_i2c.515816864"/>
@@ -472,9 +457,6 @@
       <property id="config.driver.sci_i2c.param_checking_enable" value="config.driver.sci_i2c.param_checking_enable.bsp"/>
       <property id="config.driver.sci_i2c.dtc_enable" value="config.driver.sci_i2c.dtc_enable.disabled"/>
       <property id="config.driver.sci_i2c.addr_mode_10_bit_enable" value="config.driver.sci_i2c.addr_mode_10_bit_enable.disabled"/>
-    </config>
-    <config id="config.driver.icu">
-      <property id="config.driver.icu.param_checking_enable" value="config.driver.icu.param_checking_enable.bsp"/>
     </config>
     <config id="config.awsfreertos.thread">
       <property id="config.awsfreertos.custom_freertosconfig" value=""/>
@@ -572,7 +554,6 @@
       <configSetting altId="iic0.pairing.free" configurationId="iic0.pairing"/>
       <configSetting altId="iic0.scl.p408" configurationId="iic0.scl"/>
       <configSetting altId="iic0.sda.p407" configurationId="iic0.sda"/>
-      <configSetting altId="irq0.irq00.p206" configurationId="irq0.irq00"/>
       <configSetting altId="irq0.mode.enabled" configurationId="irq0.mode"/>
       <configSetting altId="p001.adc0.an01" configurationId="p001"/>
       <configSetting altId="p001.gpio_mode.gpio_mode_an" configurationId="p001.gpio_mode"/>
@@ -597,9 +578,8 @@
       <configSetting altId="p110.gpio_mode.gpio_mode_out.low" configurationId="p110.gpio_mode"/>
       <configSetting altId="p111.output.low" configurationId="p111"/>
       <configSetting altId="p111.gpio_mode.gpio_mode_out.low" configurationId="p111.gpio_mode"/>
-      <configSetting altId="p206.irq0.irq00" configurationId="p206"/>
-      <configSetting altId="p206.gpio_irq.gpio_irq_enabled" configurationId="p206.gpio_irq"/>
-      <configSetting altId="p206.gpio_mode.gpio_mode_irq" configurationId="p206.gpio_mode"/>
+      <configSetting altId="p206.input" configurationId="p206"/>
+      <configSetting altId="p206.gpio_mode.gpio_mode_in" configurationId="p206.gpio_mode"/>
       <configSetting altId="p207.output.low" configurationId="p207"/>
       <configSetting altId="p207.gpio_mode.gpio_mode_out.low" configurationId="p207.gpio_mode"/>
       <configSetting altId="p300.debug0.swclk" configurationId="p300"/>

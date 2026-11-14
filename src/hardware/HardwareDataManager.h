@@ -6,14 +6,6 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 #include <cstdint>
 
-extern volatile bool gI2C0TxCplt;
-extern volatile bool gI2C0RxCplt;
-
-extern volatile bool gI2C1TxCplt;
-extern volatile bool gI2C1RxCplt;
-
-extern volatile bool scan_complete_flag;
-
 void I2C0WaitTxCplt();
 void I2C0WaitRxCplt();
 

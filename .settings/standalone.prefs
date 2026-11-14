@@ -1,4 +1,4 @@
-#Thu Nov 12 12:56:47 CST 2026
+#Sat Nov 14 11:23:28 CST 2026
 com.renesas.cdt.ddsc.content/com.renesas.cdt.ddsc.content.defaultlinkerscript=script/fsp.lld
 com.renesas.cdt.ddsc.contentgen.options/options/suppresswarningspaths=ra/arm,ra/aws
 com.renesas.cdt.ddsc.contentgen.options/options/toolchainversion=23.1.0
@@ -26,8 +26,6 @@ com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_ad
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_adc\#\#\#\#6.6.0/libraries=
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_gpt\#\#\#\#6.6.0/all=1499088454,ra/fsp/inc/api/r_timer_api.h|3105831900,ra/fsp/inc/instances/r_gpt.h|827300049,ra/fsp/src/r_gpt/r_gpt.c
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_gpt\#\#\#\#6.6.0/libraries=
-com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_icu\#\#\#\#6.6.0/all=340285871,ra/fsp/inc/api/r_external_irq_api.h|1926016690,ra/fsp/inc/instances/r_icu.h|2882648082,ra/fsp/src/r_icu/r_icu.c
-com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_icu\#\#\#\#6.6.0/libraries=
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_iic_master\#\#\#\#6.6.0/all=2761310874,ra/fsp/inc/api/r_elc_api.h|3412164478,ra/fsp/inc/api/r_transfer_api.h|2064401064,ra/fsp/inc/api/r_i2c_master_api.h|2771403119,ra/fsp/inc/instances/r_iic_master.h|275980752,ra/fsp/src/r_iic_master/r_iic_master.c
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_iic_master\#\#\#\#6.6.0/libraries=
 com.renesas.cdt.ddsc.packs.componentfiles/Renesas\#\#HAL\ Drivers\#\#all\#\#r_ioport\#\#\#\#6.6.0/all=1630225429,ra/fsp/inc/api/r_ioport_api.h|1676708329,ra/fsp/inc/instances/r_ioport.h|557850714,ra/fsp/src/r_ioport/r_ioport.c

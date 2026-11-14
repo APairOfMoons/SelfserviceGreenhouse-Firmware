@@ -88,23 +88,27 @@ void init() {
   buffer[0] = 0x00;
   buffer[1] = static_cast<uint8_t>(cfg_reg.raw & 0xFF);        // LSB
   buffer[2] = static_cast<uint8_t>((cfg_reg.raw >> 8) & 0xFF); // MSB
-  R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false);
-  I2C1WaitTxCplt();
+  if (FSP_SUCCESS == R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false)) {
+    I2C1WaitTxCplt();
+  }
 
   buffer[0] = 0x03;
   buffer[1] = static_cast<uint8_t>(psm_reg.raw & 0xFF);        // LSB
   buffer[2] = static_cast<uint8_t>((psm_reg.raw >> 8) & 0xFF); // MSB
-  R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false);
-  I2C1WaitTxCplt();
+  if (FSP_SUCCESS == R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false)) {
+    I2C1WaitTxCplt();
+  }
 }
 
 double read() {
-  uint8_t buffer[2];
+  uint8_t buffer[2]{};
   buffer[0] = 0x04;
-  R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 1, true);
-  I2C1WaitTxCplt();
-  R_SCI_I2C_Read(&g_i2c0_ctrl, &buffer[0], 2, false);
-  I2C1WaitRxCplt();
+  if (FSP_SUCCESS == R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 1, true)) {
+    I2C1WaitTxCplt();
+  }
+  if (FSP_SUCCESS == R_SCI_I2C_Read(&g_i2c0_ctrl, &buffer[0], 2, false)) {
+    I2C1WaitRxCplt();
+  }
 
   const auto raw_als = static_cast<uint16_t>(
       buffer[0] | (static_cast<uint16_t>(buffer[1]) << 8));
@@ -135,8 +139,9 @@ void power_up(const bool enable) {
   buffer[0] = 0x00;
   buffer[1] = static_cast<uint8_t>(cfg_reg.raw & 0xFF);
   buffer[2] = static_cast<uint8_t>((cfg_reg.raw >> 8) & 0xFF);
-  R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false);
-  I2C1WaitTxCplt();
+  if (FSP_SUCCESS == R_SCI_I2C_Write(&g_i2c0_ctrl, &buffer[0], 3, false)) {
+    I2C1WaitTxCplt();
+  }
 
   if (enable) {
     vTaskDelay(pdMS_TO_TICKS(3)); // 唤醒等待至少 2.5 ms

@@ -7,29 +7,61 @@
 #include "aht20.h"
 #include "common_data.h"
 #include "hal_data.h"
+#include "r_ioport.h"
+
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "motor.h"
 #include "portmacro.h"
 #include "projdefs.h"
-#include "r_ioport.h"
-#include "task.h"
+#include "semphr.h"
 #include "veml7700.h"
 
-volatile bool gI2C0TxCplt = false;
-volatile bool gI2C0RxCplt = false;
+namespace {
+constexpr TickType_t kWaitTimeoutTicks = pdMS_TO_TICKS(100);
 
-volatile bool gI2C1TxCplt = false;
-volatile bool gI2C1RxCplt = false;
+StaticSemaphore_t g_i2c0_tx_sem_buffer;
+StaticSemaphore_t g_i2c0_rx_sem_buffer;
+StaticSemaphore_t g_i2c1_tx_sem_buffer;
+StaticSemaphore_t g_i2c1_rx_sem_buffer;
+StaticSemaphore_t g_adc0_scan_sem_buffer;
+
+SemaphoreHandle_t g_i2c0_tx_sem = nullptr;
+SemaphoreHandle_t g_i2c0_rx_sem = nullptr;
+SemaphoreHandle_t g_i2c1_tx_sem = nullptr;
+SemaphoreHandle_t g_i2c1_rx_sem = nullptr;
+SemaphoreHandle_t g_adc0_scan_sem = nullptr;
+
+void initSyncPrimitives() {
+  if (g_i2c0_tx_sem == nullptr) {
+    g_i2c0_tx_sem = xSemaphoreCreateBinaryStatic(&g_i2c0_tx_sem_buffer);
+  }
+  if (g_i2c0_rx_sem == nullptr) {
+    g_i2c0_rx_sem = xSemaphoreCreateBinaryStatic(&g_i2c0_rx_sem_buffer);
+  }
+  if (g_i2c1_tx_sem == nullptr) {
+    g_i2c1_tx_sem = xSemaphoreCreateBinaryStatic(&g_i2c1_tx_sem_buffer);
+  }
+  if (g_i2c1_rx_sem == nullptr) {
+    g_i2c1_rx_sem = xSemaphoreCreateBinaryStatic(&g_i2c1_rx_sem_buffer);
+  }
+  if (g_adc0_scan_sem == nullptr) {
+    g_adc0_scan_sem = xSemaphoreCreateBinaryStatic(&g_adc0_scan_sem_buffer);
+  }
+}
+} // namespace
 
 namespace HardwareDataManager {
 
 void peripheral_init() {
+  initSyncPrimitives();
   aht20::init();
   veml7700::init();
   R_ADC_Open(&g_adc0_ctrl, &g_adc0_cfg);
   R_ADC_ScanCfg(&g_adc0_ctrl, &g_adc0_channel_cfg);
-  (void)R_ADC_ScanStart(&g_adc0_ctrl);
+  if (FSP_SUCCESS == R_ADC_ScanStart(&g_adc0_ctrl)) {
+    ADC0WaitScanCplt();
+  }
 }
 
 // 读取
@@ -44,9 +76,10 @@ double readAirHumidity() {
   return humi;
 }
 uint16_t readSoilHumidity() { // 2510 920
-  R_ADC_ScanStart(&g_adc0_ctrl);
-  ADC0WaitScanCplt();
-  uint16_t data;
+  if (FSP_SUCCESS == R_ADC_ScanStart(&g_adc0_ctrl)) {
+    ADC0WaitScanCplt();
+  }
+  uint16_t data = 0;
   R_ADC_Read(&g_adc0_ctrl, ADC_CHANNEL_1, &data);
 
   return data;
@@ -168,86 +201,89 @@ bool rotateTurntable(const float deltaDegrees) {
 } // namespace HardwareDataManager
 
 void i2c_callback(i2c_master_callback_args_t *p_args) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   switch (p_args->event) {
   case I2C_MASTER_EVENT_TX_COMPLETE: {
-    gI2C0TxCplt = true;
+    if (g_i2c0_tx_sem != nullptr) {
+      xSemaphoreGiveFromISR(g_i2c0_tx_sem, &xHigherPriorityTaskWoken);
+    }
     break;
   }
   case I2C_MASTER_EVENT_RX_COMPLETE: {
-    gI2C0RxCplt = true;
+    if (g_i2c0_rx_sem != nullptr) {
+      xSemaphoreGiveFromISR(g_i2c0_rx_sem, &xHigherPriorityTaskWoken);
+    }
     break;
   }
   default: {
-    gI2C0TxCplt = gI2C0RxCplt = false;
     break;
   }
   }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void I2C0WaitTxCplt() {
-  uint16_t wTimeOut = 100;
-  while (!gI2C0TxCplt && wTimeOut) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-    wTimeOut--;
+  if (g_i2c0_tx_sem == nullptr) {
+    initSyncPrimitives();
   }
-  gI2C0TxCplt = false;
+  (void)xSemaphoreTake(g_i2c0_tx_sem, kWaitTimeoutTicks);
 }
 
 void I2C0WaitRxCplt() {
-  uint16_t wTimeOut = 100;
-  while (!gI2C0RxCplt && wTimeOut) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-    wTimeOut--;
+  if (g_i2c0_rx_sem == nullptr) {
+    initSyncPrimitives();
   }
-  gI2C0RxCplt = false;
+  (void)xSemaphoreTake(g_i2c0_rx_sem, kWaitTimeoutTicks);
 }
 
 void sci_i2c_master_callback(i2c_master_callback_args_t *p_args) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   switch (p_args->event) {
   case I2C_MASTER_EVENT_TX_COMPLETE: {
-    gI2C1TxCplt = true;
+    if (g_i2c1_tx_sem != nullptr) {
+      xSemaphoreGiveFromISR(g_i2c1_tx_sem, &xHigherPriorityTaskWoken);
+    }
     break;
   }
   case I2C_MASTER_EVENT_RX_COMPLETE: {
-    gI2C1RxCplt = true;
+    if (g_i2c1_rx_sem != nullptr) {
+      xSemaphoreGiveFromISR(g_i2c1_rx_sem, &xHigherPriorityTaskWoken);
+    }
     break;
   }
   default: {
-    gI2C1TxCplt = gI2C1RxCplt = false;
     break;
   }
   }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void I2C1WaitTxCplt() {
-  uint16_t wTimeOut = 100;
-  while (!gI2C1TxCplt && wTimeOut) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-    wTimeOut--;
+  if (g_i2c1_tx_sem == nullptr) {
+    initSyncPrimitives();
   }
-  gI2C1TxCplt = false;
+  (void)xSemaphoreTake(g_i2c1_tx_sem, kWaitTimeoutTicks);
 }
 
 void I2C1WaitRxCplt() {
-  uint16_t wTimeOut = 100;
-  while (!gI2C1RxCplt && wTimeOut) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-    wTimeOut--;
+  if (g_i2c1_rx_sem == nullptr) {
+    initSyncPrimitives();
   }
-  gI2C1RxCplt = false;
+  (void)xSemaphoreTake(g_i2c1_rx_sem, kWaitTimeoutTicks);
 }
 
-volatile bool scan_complete_flag = false;
 void adc0_callback(adc_callback_args_t *p_args) {
   FSP_PARAMETER_NOT_USED(p_args);
-  scan_complete_flag = true;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  if (g_adc0_scan_sem != nullptr) {
+    xSemaphoreGiveFromISR(g_adc0_scan_sem, &xHigherPriorityTaskWoken);
+  }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void ADC0WaitScanCplt() {
-  uint16_t wTimeOut = 100;
-  while (!scan_complete_flag && wTimeOut) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-    wTimeOut--;
+  if (g_adc0_scan_sem == nullptr) {
+    initSyncPrimitives();
   }
-  scan_complete_flag = false;
+  (void)xSemaphoreTake(g_adc0_scan_sem, kWaitTimeoutTicks);
 }
