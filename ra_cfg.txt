@@ -281,7 +281,7 @@ FSP Configuration
       General: Name: g_timer0
       General: Channel: 1
       General: Mode: Saw-wave PWM
-      General: Period: 60
+      General: Period: 15000
       General: Compare Match: Compare Match A: Status: Disabled
       General: Compare Match: Compare Match A: Compare match value: 0x10000
       General: Compare Match: Compare Match B: Status: Disabled
