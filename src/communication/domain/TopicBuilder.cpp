@@ -53,7 +53,12 @@ bool TopicBuilder::alarmTopic(char *buffer,
                               const char *deviceId,
                               const char *code)
 {
-    if ((code == nullptr) || (code[0] == '\0'))
+    /*
+     * code 必须是单层标识符：告警 topic 固定为 gh/<id>/alarm/<code> 四层。
+     * 这个前提被 ACL（gh/+/alarm/+）与订阅过滤器共用，含 '/' 的 code 会多出一层，
+     * 既躲开 ACL 也躲开订阅，因此在源头拒掉。
+     */
+    if ((code == nullptr) || (code[0] == '\0') || (std::strchr(code, '/') != nullptr))
     {
         return false;
     }

@@ -8,6 +8,7 @@
 
 #include "CommunicationService.h"
 #include "communication/domain/AlarmPayload.h"
+#include "communication/domain/BootSession.h"
 #include "communication/domain/TelemetryPayload.h"
 #include "communication/domain/TopicBuilder.h"
 #include "communication/port/CommRtos.h"
@@ -50,6 +51,7 @@ void MessageSender::uploadMonitoringData(MonitoringData monitoringData)
     const std::size_t length = TelemetryPayload::build(monitoringData,
                                                        s_sequence,
                                                        commRtosUptimeSeconds(),
+                                                       BootSession::nonce(),
                                                        s_payload,
                                                        sizeof(s_payload));
     if (length == 0U)
@@ -74,6 +76,7 @@ void MessageSender::throwGreenhouseException(GreenhouseException exception)
 {
     const std::size_t length = AlarmPayload::build(exception,
                                                    commRtosUptimeSeconds(),
+                                                   BootSession::nonce(),
                                                    s_payload,
                                                    sizeof(s_payload));
     if (length == 0U)

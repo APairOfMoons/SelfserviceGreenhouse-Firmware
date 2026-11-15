@@ -22,13 +22,15 @@ class TelemetryPayload
 {
     public:
     /**
-     * @param buffer   输出缓冲区，成功时以 '\0' 结尾
-     * @param capacity 缓冲区容量（含结尾 '\0'）
-     * @return 写入长度；容量不足时返回 0，且 buffer 内容不可用
+     * @param buffer    输出缓冲区，成功时以 '\0' 结尾
+     * @param capacity  缓冲区容量（含结尾 '\0'）
+     * @param bootNonce 本次上电的标识；为 0（尚未建立）时直接返回 0，不构建报文
+     * @return 写入长度；容量不足或标识缺失时返回 0，且 buffer 内容不可用
      */
     static std::size_t build(const MonitoringData &data,
                              uint32_t sequence,
                              uint32_t uptimeSeconds,
+                             uint32_t bootNonce,
                              char *buffer,
                              std::size_t capacity);
 };

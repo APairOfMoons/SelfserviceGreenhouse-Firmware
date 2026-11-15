@@ -6,10 +6,12 @@
 
 #include <cstring>
 
+#include "communication/domain/BootSession.h"
 #include "communication/domain/ConfigurationPayload.h"
 #include "communication/domain/TextWriter.h"
 #include "communication/domain/TopicBuilder.h"
 #include "communication/port/CommRtos.h"
+#include "communication/port/EntropySource.h"
 #include "communication/transport/AtChannel.h"
 #include "communication/transport/EspAtMqtt.h"
 #include "communication/transport/EspAtWifi.h"
@@ -57,8 +59,8 @@ constexpr uint32_t kWifiRetries = 3U;
 constexpr uint32_t kBootRoundsBeforeFault = 5U;
 constexpr uint32_t kPublishFailuresBeforeReconnect = 3U;
 
-/* LWT 报文与协议 v1 一致；configure() 会替我们转义其中的引号。 */
-constexpr const char *kLwtPayload = "{\"v\":1,\"online\":false}";
+/* LWT 报文。载荷在连接时登记，运行时改不了，所以没有 b。 */
+constexpr const char *kLwtPayload = "{\"v\":2,\"online\":false}";
 
 
 CommRtosQueue s_queue = nullptr;
@@ -204,9 +206,25 @@ bool enterOnline()
         return false;
     }
 
+    char nonceHex[9];
     char payload[64];
+
     TextWriter writer(payload, sizeof(payload));
-    writer.append("{\"v\":1,\"online\":true,\"up\":");
+    writer.append("{\"v\":2,");
+
+    /*
+     * 正常不会走到 else：initialize() 在 run() 的第一条语句里就建立了标识。
+     * 万一出了问题，状态报文宁可少一个字段也不发假的 0——它没有 seq，
+     * 缺 b 不影响下游去重。
+     */
+    if (BootSession::format(nonceHex, sizeof(nonceHex)))
+    {
+        writer.append("\"b\":\"");
+        writer.append(nonceHex);
+        writer.append("\",");
+    }
+
+    writer.append("\"online\":true,\"up\":");
     writer.appendUnsigned(commRtosUptimeSeconds());
     writer.append('}');
 
@@ -402,6 +420,14 @@ bool CommunicationService::initialize()
     {
         return true;
     }
+
+    /*
+     * 上电标识要早于任何发送。这里已经处在调度器上下文（由 comm_thread 调进来），
+     * 所以取得到 tick，也允许被中断打断——中断落在采样之间正是熵的一部分。
+     */
+    BootSession::establish(BootSession::mix(entropySystickPhase(),
+                                            commRtosUptimeMs(),
+                                            entropyStackAddress()));
 
     if (!AtChannel::initialize())
     {

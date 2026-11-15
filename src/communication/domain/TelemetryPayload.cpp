@@ -28,32 +28,47 @@ int32_t toHundredths(double value)
 std::size_t TelemetryPayload::build(const MonitoringData &data,
                                     uint32_t sequence,
                                     uint32_t uptimeSeconds,
+                                    uint32_t bootNonce,
                                     char *buffer,
                                     std::size_t capacity)
 {
+    /*
+     * 标识未建立时不发这条报文：下游按 (deviceId, b, seq) 去重，空 b 会让两次上电
+     * 的数据共用同一个键，第二次从 seq=0 起就会被当成重复丢掉。宁可丢一帧。
+     */
+    if (bootNonce == 0U)
+    {
+        return 0;
+    }
+
     TextWriter writer(buffer, capacity);
 
-    const bool ok = writer.append("{\"v\":1,\"seq\":")
-                    && writer.appendUnsigned(sequence)
-                    && writer.append(",\"up\":")
-                    && writer.appendUnsigned(uptimeSeconds)
-                    && writer.append(",\"t\":")
-                    && writer.appendInt(toHundredths(data.temperature))
-                    && writer.append(",\"ah\":")
-                    && writer.appendInt(toHundredths(data.air_humidity))
-                    && writer.append(",\"sh\":")
-                    && writer.appendInt(toHundredths(data.soil_humidity))
-                    && writer.append(",\"lux\":")
-                    && writer.appendInt(data.illuminance)
-                    && writer.append(",\"water\":")
-                    && writer.appendBool(data.has_enough_water)
-                    && writer.append(",\"fan\":")
-                    && writer.appendBool(data.fan_on)
-                    && writer.append(",\"light\":")
-                    && writer.appendBool(data.light_on)
-                    && writer.append(",\"heat\":")
-                    && writer.appendBool(data.heater_on)
-                    && writer.append('}');
+    bool ok = writer.append("{\"v\":2,\"b\":\"")
+              && writer.appendHex32(bootNonce)
+              && writer.append("\",");
+
+    ok = ok
+         && writer.append("\"seq\":")
+         && writer.appendUnsigned(sequence)
+         && writer.append(",\"up\":")
+         && writer.appendUnsigned(uptimeSeconds)
+         && writer.append(",\"t\":")
+         && writer.appendInt(toHundredths(data.temperature))
+         && writer.append(",\"ah\":")
+         && writer.appendInt(toHundredths(data.air_humidity))
+         && writer.append(",\"sh\":")
+         && writer.appendInt(toHundredths(data.soil_humidity))
+         && writer.append(",\"lux\":")
+         && writer.appendInt(data.illuminance)
+         && writer.append(",\"water\":")
+         && writer.appendBool(data.has_enough_water)
+         && writer.append(",\"fan\":")
+         && writer.appendBool(data.fan_on)
+         && writer.append(",\"light\":")
+         && writer.appendBool(data.light_on)
+         && writer.append(",\"heat\":")
+         && writer.appendBool(data.heater_on)
+         && writer.append('}');
 
     if (!ok || writer.isTruncated())
     {

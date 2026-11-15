@@ -27,6 +27,10 @@ class TextWriter
     bool append(char character);
     bool appendInt(int32_t value);
     bool appendUnsigned(uint32_t value);
+
+    /** 定长 8 位小写十六进制，不足补前导 0 */
+    bool appendHex32(uint32_t value);
+
     bool appendBool(bool value);
 
     const char *data() const;

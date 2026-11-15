@@ -106,6 +106,27 @@ bool TextWriter::appendUnsigned(uint32_t value)
     return true;
 }
 
+bool TextWriter::appendHex32(uint32_t value)
+{
+    if (!reserve(8U))
+    {
+        return false;
+    }
+
+    for (int shift = 28; shift >= 0; shift -= 4)
+    {
+        const uint32_t nibble = (value >> static_cast<uint32_t>(shift)) & 0x0FU;
+        const char digit = (nibble < 10U) ? static_cast<char>('0' + nibble)
+                                          : static_cast<char>('a' + (nibble - 10U));
+
+        m_buffer[m_length] = digit;
+        m_length += 1;
+    }
+    m_buffer[m_length] = '\0';
+
+    return true;
+}
+
 bool TextWriter::appendInt(int32_t value)
 {
     if (value < 0)
