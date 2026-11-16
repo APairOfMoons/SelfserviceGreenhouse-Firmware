@@ -26,8 +26,17 @@ class TopicBuilder
                       const char *suffix);
 
     static bool telemetryTopic(char *buffer, std::size_t capacity, const char *deviceId);
+
+    /**
+     * 拼 gh/<deviceId>/alarm/<code>。
+     *
+     * code 必须是单层标识符（不含 '/'）——ACL 与订阅过滤器都按四层写死，
+     * 多一层的 topic 会绕过它们。
+     */
     static bool alarmTopic(char *buffer, std::size_t capacity, const char *deviceId, const char *code);
     static bool statusTopic(char *buffer, std::size_t capacity, const char *deviceId);
+    static bool configTopic(char *buffer, std::size_t capacity, const char *deviceId);
+    static bool configAckTopic(char *buffer, std::size_t capacity, const char *deviceId);
     static bool commandTopic(char *buffer, std::size_t capacity, const char *deviceId);
 };
 

@@ -1,4 +1,4 @@
-//
+ //
 // 临界区适配层实现（C）：FreeRTOS 原生 taskENTER_CRITICAL / taskEXIT_CRITICAL。
 //
 

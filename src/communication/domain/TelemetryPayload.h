@@ -14,20 +14,23 @@
 /**
  * 把 MonitoringData 序列化为遥测 JSON。
  *
- * 字段全部为整数：温度与湿度以 0.1 为单位（235 表示 23.5），
- * 避免依赖 printf 浮点支持，也避免客户端出现精度歧义。
+ * 温度与湿度以 0.01 为单位（2350 表示 23.50），用 int32 承载，
+ * 精度比常见传感器（0.0625 ℃）还细一档，同时不依赖 printf 浮点支持。
+ * 光照本身就是整数 lux，原样上报。
  */
 class TelemetryPayload
 {
     public:
     /**
-     * @param buffer   输出缓冲区，成功时以 '\0' 结尾
-     * @param capacity 缓冲区容量（含结尾 '\0'）
-     * @return 写入长度；容量不足时返回 0，且 buffer 内容不可用
+     * @param buffer    输出缓冲区，成功时以 '\0' 结尾
+     * @param capacity  缓冲区容量（含结尾 '\0'）
+     * @param bootNonce 本次上电的标识；为 0（尚未建立）时直接返回 0，不构建报文
+     * @return 写入长度；容量不足或标识缺失时返回 0，且 buffer 内容不可用
      */
     static std::size_t build(const MonitoringData &data,
                              uint32_t sequence,
                              uint32_t uptimeSeconds,
+                             uint32_t bootNonce,
                              char *buffer,
                              std::size_t capacity);
 };

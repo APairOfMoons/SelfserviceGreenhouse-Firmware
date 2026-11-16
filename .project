@@ -6,6 +6,12 @@
 	</projects>
 	<buildSpec>
 		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.genmakebuilder</name>
+			<triggers>clean,full,incremental,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
 			<name>com.renesas.cdt.ddsc.contentgen.ddscBuilder</name>
 			<arguments>
 			</arguments>
@@ -21,6 +27,12 @@
 			<arguments>
 			</arguments>
 		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.ScannerConfigBuilder</name>
+			<triggers>full,incremental,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
 	</buildSpec>
 	<natures>
 		<nature>org.eclipse.cdt.core.cnature</nature>
@@ -29,5 +41,7 @@
 		<nature>com.renesas.cdt.build.cmake.arm.armCmakeNature</nature>
 		<nature>com.renesas.cdt.ddsc.contentgen.ddscNature</nature>
 		<nature>com.renesas.cdt.ra.contentgen.raNature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
 </projectDescription>
