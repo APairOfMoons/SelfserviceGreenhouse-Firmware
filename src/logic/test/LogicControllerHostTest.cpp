@@ -260,6 +260,23 @@ void testTurntableFallbackInterval()
     CHECK(h.hw.turntable_angle > 0);
 }
 
+// 每日角度小于一个步角时向上取整，保证至少动一次
+void testTurntableSmallDailyAngleRoundsUp()
+{
+    Harness h;
+    h.params.variable.turnAnglePerDay = 10;
+    h.params.variable.turnStepAngle = 8; // 10 / 8 -> 2 次（向上取整；取整前是 1 次）
+    h.params.variable.dayLengthMs = 2UL * kHour;
+    h.ctrl.setConfiguration(h.params);
+
+    h.ctrl.setTimeOfDay(7UL * kHour);
+    h.advance(59UL * kMinute); // 间隔 = 2h / 2 = 1h，还差 1min
+    CHECK(h.hw.turntable_angle == 0);
+
+    h.advance(2UL * kMinute); // 越过 1h，转一次
+    CHECK(h.hw.turntable_angle > 0);
+}
+
 // 10) 手动模式超时自动回到 AUTO
 void testManualModeTimeout()
 {
@@ -840,6 +857,7 @@ int main()
     testLightOnlyInDaytime();
     testTurntableSwingAndPark();
     testTurntableFallbackInterval();
+    testTurntableSmallDailyAngleRoundsUp();
     testManualModeTimeout();
     testRuntimeParamChange();
     testConfigurationRejectsNegativeTurnAngle();

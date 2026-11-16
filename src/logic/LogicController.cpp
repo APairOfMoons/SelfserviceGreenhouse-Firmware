@@ -853,17 +853,20 @@ void LogicController::updateIrrigation(uint32_t now_ms)
 uint32_t LogicController::turntableIntervalMs() const
 {
     // 网端只下发"每日累计受光角度"，转动节律由它换算：
-    //   每日转动次数 = turnAnglePerDay / turnStepAngle
+    //   每日转动次数 = ceil(turnAnglePerDay / turnStepAngle)
     //   间隔         = dayLengthMs / 每日转动次数
-    // 这样白天窗口内正好把设定的受光角度分配完，不会转多也不会转少。
-    const int steps_per_day =
-        config_.variable.turnAnglePerDay / config_.variable.turnStepAngle;
+    // 向上取整保证"正的角度目标至少动一次"；20° 配 10° 步角就是 2 次，
+    // 而 10° 配 15° 步角会转 1 次（实际 15°，略超设定）。
+    const int angle_per_day = config_.variable.turnAnglePerDay;
+    const int step_angle = config_.variable.turnStepAngle;
 
-    if ((steps_per_day <= 0) || (config_.variable.turnStepAngle <= 0))
+    if ((angle_per_day <= 0) || (step_angle <= 0))
     {
         // 网端没配每日角度（或配成 0）时退回固定节律，保持旧行为。
         return config_.variable.turnIntervalMs;
     }
+
+    const int steps_per_day = (angle_per_day + step_angle - 1) / step_angle;
 
     uint32_t interval = config_.variable.dayLengthMs / static_cast<uint32_t>(steps_per_day);
     if (interval < (60UL * 1000UL))

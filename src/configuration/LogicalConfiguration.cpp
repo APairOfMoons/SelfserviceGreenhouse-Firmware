@@ -136,7 +136,9 @@ LogicalStatics makeDefaultConfiguration()
     config.variable.pumpMaxPerDay = 3U;
 
     config.variable.maxTurnAngle = 60;
-    config.variable.turnStepAngle = 15;
+    // 实际养护每天只转 10~30°，步角取 10° 可整除整段区间（10→1 次、30→3 次）；
+    // 电机是 4096 步/圈，10° 完全转得出来，这里只是软件调度粒度。
+    config.variable.turnStepAngle = 10;
     config.variable.turnIntervalMs = 20UL * kMinuteMs;
 
     config.variable.samplePeriodMs = 1000UL;
