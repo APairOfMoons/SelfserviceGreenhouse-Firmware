@@ -229,6 +229,7 @@ void testLightOnlyInDaytime()
 }
 
 // 9) 白天摆动、夜间回中位
+// 节律由每日受光角度换算：120 / 15 = 8 次，白天 10 h / 8 = 75 min
 void testTurntableSwingAndPark()
 {
     Harness h;
@@ -236,12 +237,27 @@ void testTurntableSwingAndPark()
     h.advance(2UL * kSecond);
     CHECK(h.hw.turntable_angle == 0);
 
-    h.advance(61UL * kSecond); // 摆动周期 60 s
+    h.advance(74UL * kMinute); // 还差 1 min 到 75 min，不应转动
+    CHECK(h.hw.turntable_angle == 0);
+
+    h.advance(2UL * kMinute); // 越过 75 min，摆动一次
     CHECK(h.hw.turntable_angle > 0);
 
     h.ctrl.setTimeOfDay(22UL * kHour);
     h.advance(3UL * kSecond);
     CHECK(h.hw.turntable_angle == 0);
+}
+
+// 每日角度配成 0 时退回固定节律 turnIntervalMs
+void testTurntableFallbackInterval()
+{
+    Harness h;
+    h.params.variable.turnAnglePerDay = 0;
+    h.ctrl.setConfiguration(h.params);
+
+    h.ctrl.setTimeOfDay(9UL * kHour);
+    h.advance(61UL * kSecond); // fastParams 的 turnIntervalMs = 60 s
+    CHECK(h.hw.turntable_angle > 0);
 }
 
 // 10) 手动模式超时自动回到 AUTO
@@ -274,6 +290,15 @@ void testRuntimeParamChange()
 
     h.advance(2UL * kMinute);
     CHECK(!h.hw.heater_on); // 新下限 10 ℃，12 ℃ 不再需要加热
+}
+
+// 网端下发的每日受光角度不能为负（整份拒绝，当前配置不变）
+void testConfigurationRejectsNegativeTurnAngle()
+{
+    Harness h;
+    VariableStatics candidate = h.params.variable;
+    candidate.turnAnglePerDay = -1;
+    CHECK(!LogicalConfiguration::modifyConfiguration(candidate));
 }
 
 // 12) 执行器拒绝命令时，本地状态不假装成功
@@ -500,6 +525,10 @@ void testLightWithoutTimeBase()
 void testTurntableBackoff()
 {
     Harness h;
+    // 每日角度配 0 -> 退回固定 60 s 节律，便于观测退避窗口
+    h.params.variable.turnAnglePerDay = 0;
+    h.ctrl.setConfiguration(h.params);
+
     h.ctrl.setTimeOfDay(9UL * kHour);
     h.advance(61UL * kSecond);
     CHECK(h.hw.turntable_angle > 0);
@@ -810,8 +839,10 @@ int main()
     testOverTemperatureInterlock();
     testLightOnlyInDaytime();
     testTurntableSwingAndPark();
+    testTurntableFallbackInterval();
     testManualModeTimeout();
     testRuntimeParamChange();
+    testConfigurationRejectsNegativeTurnAngle();
     testActuatorRejectionKeepsState();
 
     testOverTempSuppressesLight();

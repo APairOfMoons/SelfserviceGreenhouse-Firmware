@@ -17,7 +17,7 @@
 // ---------- 可变配置 ----------
 struct VariableStatics
 {
-    int turnAnglePerDay;              // 每日累计受光角度
+    int turnAnglePerDay;              // 每日累计受光角度：转动次数 = 该值 / turnStepAngle
 
     // 温度（℃）
     double minTemperature;
@@ -34,8 +34,8 @@ struct VariableStatics
     double maxSoilHumidity;
 
     // 光照（lx）
-    double minIlluminance;
-    double maxIlluminance;
+    double minIlluminance;            // 补光阈值：低于它才开灯
+    double maxIlluminance;            // 仅用于状态判定/上报，控制不读
     uint32_t illuminanceMinOnMs;      // 补光最短点亮时间
 
     // 昼夜窗口

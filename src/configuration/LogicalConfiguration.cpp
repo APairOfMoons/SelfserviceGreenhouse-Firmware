@@ -96,10 +96,15 @@ bool validate(const VariableStatics &candidate)
                         (candidate.turnStepAngle <= candidate.maxTurnAngle) &&
                         (candidate.turnIntervalMs >= 1000UL);
 
+    // 每日累计受光角度：用来换算转动次数与间隔，0 表示"不按每日角度调度"。
+    const bool turnAngleOk =
+        (candidate.turnAnglePerDay >= 0) && (candidate.turnAnglePerDay <= 3600);
+
     const bool sampleOk = (candidate.samplePeriodMs >= 10UL) &&
                           (candidate.samplePeriodMs <= kMinuteMs);
 
-    return ordered && hysteresisOk && pumpOk && lightOk && turnOk && sampleOk;
+    return ordered && hysteresisOk && pumpOk && lightOk && turnOk && turnAngleOk &&
+           sampleOk;
 }
 
 LogicalStatics makeDefaultConfiguration()

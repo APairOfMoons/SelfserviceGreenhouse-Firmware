@@ -172,6 +172,8 @@ class LogicController
     // 加热中是否应禁止风扇（含"湿度远超上限 + 脉冲窗口"的破例）。
     // 在 updateAirHumidityControl 里前置判断，避免"开了又被冲突仲裁关掉"的周期通断。
     bool fanBlockedByHeater(uint32_t now_ms) const;
+    // 由 turnAnglePerDay / turnStepAngle 换算出的转动间隔（白天窗口内均分）。
+    uint32_t turntableIntervalMs() const;
     uint8_t countOutputsOn() const;
 
     bool isDaytime(uint32_t now_ms) const;
