@@ -23,10 +23,23 @@ class IHardwareData
     // ---------- 采样 ----------
     // 成功返回 true 并写入 *out；失败返回 false 且不修改 *out。
     // 实现方必须自带超时，禁止在驱动内部无限重试。
-    virtual bool readTemperature(float *out_temperature) = 0;
-    virtual bool readAirHumidity(float *out_air_humidity) = 0;
+    //
+    // 温湿度来自同一颗 AHT20：一次测量同时得到两个值，因此合并为一个接口，
+    // 避免为了拿另一个值再触发一次 75 ms 的测量。false 表示两项都无效，
+    // 控制器会把两路失败计数同时 +1（不允许只坏一项）。
+    //
+    // 注意：AHT20 上电后需要约 40 ms 才能通信，校准检查与初始化由硬件层
+    // 在 peripheral_init() 里完成一次；本接口被调用前必须已初始化完毕。
+    // 单次测量阻塞约 75~80 ms，采样周期（默认 1 s）需按此预留。
+    virtual bool readTemperatureHumidity(float *out_temperature, float *out_air_humidity) = 0;
+
+    // 土壤含水率，单位 %（0~100），不是 ADC 原始计数。
     virtual bool readSoilHumidity(float *out_soil_humidity) = 0;
+
+    // 光照度，单位 lx。上限 65535，超过按饱和处理。
     virtual bool readIlluminance(uint16_t *out_illuminance) = 0;
+
+    // 水位开关量：true = 水够用，false = 缺水。
     virtual bool readWaterLevel(bool *out_has_enough_water) = 0;
 
     // ---------- 执行器 ----------
@@ -39,11 +52,17 @@ class IHardwareData
     //      （start / isBusy / abort），不要靠阻塞主循环完成。
     virtual bool setFanStatus(bool status) = 0;
     virtual bool setLightStatus(bool status) = 0;
+
+    // true = 满功率（100% 占空比），false = 关闭（0%）。
+    // 硬件层当前用 GPT PWM 调功，逻辑层不做档位细分。
     virtual bool setHeaterStatus(bool status) = 0;
+
     virtual bool setPumpStatus(bool status) = 0;
 
     // 转盘相对当前位置转动 deltaDegrees（正 = 右，负 = 左），阻塞至动作结束。
     // 返回 false 表示超时 / 堵转 / 限位冲突。
+    // 现实约束：步进电机约 4096 步/圈、2 ms/步，15° 约 0.34 s、60° 约 1.36 s，
+    // 期间控制循环被占用；后续应改成非阻塞的 start / isBusy 接口。
     virtual bool rotateTurntable(int deltaDegrees) = 0;
 };
 

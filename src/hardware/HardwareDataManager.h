@@ -18,9 +18,11 @@ namespace HardwareDataManager {
 void peripheral_init();
 // 读取
 
-double readTemperature();
-double readAirHumidity();
-uint16_t readSoilHumidity();
+// 温湿度同源（AHT20）：一次测量同时返回两个值，避免重复触发 75 ms 测量。
+// 返回 false 表示本次读数无效（温度或湿度任一非法）。
+bool readTemperatureHumidity(double *temperature, double *air_humidity);
+// 土壤含水率，单位 %（0~100），内部完成 ADC 原始值到百分比的换算。
+float readSoilHumidity();
 double readIlluminance();
 
 bool readFanStatus();

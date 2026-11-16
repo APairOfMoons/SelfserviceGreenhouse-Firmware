@@ -50,8 +50,8 @@ class FakeHardware : public IHardwareData
     uint32_t turntable_attempts; // 含失败在内的尝试次数
 
     // ---------- IHardwareData ----------
-    bool readTemperature(float *out_temperature) override;
-    bool readAirHumidity(float *out_air_humidity) override;
+    // 温湿度合并为一次读取：任一路被置为故障，整次读取失败（两路都无效）。
+    bool readTemperatureHumidity(float *out_temperature, float *out_air_humidity) override;
     bool readSoilHumidity(float *out_soil_humidity) override;
     bool readIlluminance(uint16_t *out_illuminance) override;
     bool readWaterLevel(bool *out_has_enough_water) override;

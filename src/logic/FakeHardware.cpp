@@ -35,22 +35,14 @@ FakeHardware::FakeHardware()
 {
 }
 
-bool FakeHardware::readTemperature(float *out_temperature)
+bool FakeHardware::readTemperatureHumidity(float *out_temperature, float *out_air_humidity)
 {
-    if (fail_temperature || (nullptr == out_temperature))
+    if (fail_temperature || fail_air_humidity || (nullptr == out_temperature) ||
+        (nullptr == out_air_humidity))
     {
         return false;
     }
     *out_temperature = temperature;
-    return true;
-}
-
-bool FakeHardware::readAirHumidity(float *out_air_humidity)
-{
-    if (fail_air_humidity || (nullptr == out_air_humidity))
-    {
-        return false;
-    }
     *out_air_humidity = air_humidity;
     return true;
 }

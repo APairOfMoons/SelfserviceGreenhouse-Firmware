@@ -65,24 +65,44 @@ void peripheral_init() {
 }
 
 // 读取
-double readTemperature() {
-  double temp, humi;
-  aht20::read(&temp, &humi);
-  return temp;
+bool readTemperatureHumidity(double *temperature, double *air_humidity) {
+  if ((nullptr == temperature) || (nullptr == air_humidity)) {
+    return false;
+  }
+
+  double temp = 0.0;
+  double humi = 0.0;
+  aht20::read(&temp, &humi); // 失败时写入 -999 / -1 哨兵
+
+  if ((temp < -40.0) || (temp > 85.0) || (humi < 0.0) || (humi > 100.0)) {
+    return false;
+  }
+
+  *temperature = temp;
+  *air_humidity = humi;
+  return true;
 }
-double readAirHumidity() {
-  double temp, humi;
-  aht20::read(&temp, &humi);
-  return humi;
-}
-uint16_t readSoilHumidity() { // 2510 920
+
+float readSoilHumidity() {
   if (FSP_SUCCESS == R_ADC_ScanStart(&g_adc0_ctrl)) {
     ADC0WaitScanCplt();
   }
   uint16_t data = 0;
   R_ADC_Read(&g_adc0_ctrl, ADC_CHANNEL_1, &data);
 
-  return data;
+  // 标定端点：干土 / 湿土的原始 ADC 读数（需实测替换）。
+  constexpr float kAdcDry = 2510.0F;
+  constexpr float kAdcWet = 920.0F;
+  static_assert(kAdcDry > kAdcWet, "dry ADC value must be larger than wet");
+
+  float percent = (kAdcDry - static_cast<float>(data)) /
+                  (kAdcDry - kAdcWet) * 100.0F;
+  if (percent < 0.0F) {
+    percent = 0.0F;
+  } else if (percent > 100.0F) {
+    percent = 100.0F;
+  }
+  return percent;
 }
 double readIlluminance() { return veml7700::read(); }
 
@@ -199,7 +219,14 @@ bool setPumpStatus(const bool status) {
 }
 
 bool rotateTurntable(const float deltaDegrees) {
-  MotorDevGet()->rotate(deltaDegrees, MOTOR_DIRECTION_CW, 2);
+  // 电机驱动只接受"角度大小 + 方向"，这里把带符号角度拆开：
+  // 正角度右转（CW），负角度左转（CCW）。之前固定 CW 会把负角度当成
+  // 负步数，循环一次都不执行。
+  const float magnitude =
+      (deltaDegrees < 0.0F) ? -deltaDegrees : deltaDegrees;
+  const uint8_t direction =
+      (deltaDegrees < 0.0F) ? MOTOR_DIRECTION_CCW : MOTOR_DIRECTION_CW;
+  MotorDevGet()->rotate(magnitude, direction, 2);
   return true;
 }
 } // namespace HardwareDataManager

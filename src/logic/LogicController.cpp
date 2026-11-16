@@ -295,31 +295,35 @@ void LogicController::sample(uint32_t now_ms)
 {
     (void) now_ms;
 
-    float value = 0.0F;
+    float temperature = 0.0F;
+    float air_humidity = 0.0F;
 
-    if (hw_.readTemperature(&value))
+    // AHT20 一次测量同时给出温度和湿度；读失败意味着两项都不可信。
+    if (hw_.readTemperatureHumidity(&temperature, &air_humidity))
     {
-        temperature_.value = value;
+        temperature_.value = temperature;
         temperature_.valid = true;
         temperature_.fail_count = 0U;
-        snap_.temperature = value;
-    }
-    else if (temperature_.fail_count < 255U)
-    {
-        temperature_.fail_count++;
-    }
+        snap_.temperature = temperature;
 
-    if (hw_.readAirHumidity(&value))
-    {
-        air_humidity_.value = value;
+        air_humidity_.value = air_humidity;
         air_humidity_.valid = true;
         air_humidity_.fail_count = 0U;
-        snap_.air_humidity = value;
+        snap_.air_humidity = air_humidity;
     }
-    else if (air_humidity_.fail_count < 255U)
+    else
     {
-        air_humidity_.fail_count++;
+        if (temperature_.fail_count < 255U)
+        {
+            temperature_.fail_count++;
+        }
+        if (air_humidity_.fail_count < 255U)
+        {
+            air_humidity_.fail_count++;
+        }
     }
+
+    float value = 0.0F;
 
     if (hw_.readSoilHumidity(&value))
     {

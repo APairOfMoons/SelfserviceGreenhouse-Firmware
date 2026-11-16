@@ -1,11 +1,11 @@
 //
 // 逻辑层 PC 端测试（不进固件）。
 //
-// 用法（在仓库根目录，任意主机编译器）：
-//   g++ -std=c++17 -DLOGIC_HOST_TEST -Isrc src/logic/LogicController.cpp
-//       src/logic/GreenhouseParams.cpp src/logic/FakeHardware.cpp
-//       src/logic/VariableJudge.cpp src/logic/ExceptionMapping.cpp
-//       src/logic/MonitoringDataMapper.cpp src/logic/TelemetryReporter.cpp
+// 用法（在仓库根目录，任意主机编译器，C++11）：
+//   g++ -std=c++11 -DLOGIC_HOST_TEST -Isrc src/logic/LogicController.cpp
+//       src/logic/VariableJudge.cpp src/logic/TelemetryReporter.cpp
+//       src/logic/FakeHardware.cpp src/app/ExceptionMapping.cpp
+//       src/app/MonitoringDataMapper.cpp src/configuration/LogicalConfiguration.cpp
 //       src/logic/test/LogicControllerHostTest.cpp -o logic_test.exe
 //   .\logic_test.exe
 //
@@ -193,6 +193,8 @@ void testTemperatureSensorFault()
     h.hw.fail_temperature = true;
     h.advance(3UL * kSecond);
     CHECK((h.ctrl.faults() & greenhouse::FAULT_TEMPERATURE_SENSOR) != 0U);
+    // 温湿度同源：一次读取失败，湿度通道同样判定为故障
+    CHECK((h.ctrl.faults() & greenhouse::FAULT_AIR_HUMIDITY_SENSOR) != 0U);
     CHECK(!h.hw.heater_on);
 }
 
