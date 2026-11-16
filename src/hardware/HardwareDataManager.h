@@ -6,31 +6,38 @@
 #define SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
 #include <cstdint>
 
-namespace HardwareDataManager{
+void I2C0WaitTxCplt();
+void I2C0WaitRxCplt();
 
-    //读取
+void I2C1WaitTxCplt();
+void I2C1WaitRxCplt();
 
-    double readTemperature();
-    double readAirHumidity();
-    double readSoilHumidity();
-    int readIlluminance();
+void ADC0WaitScanCplt();
 
-    bool readFanStatus();
-    bool readLightStatus();
-    bool readHeaterStatus();
-    bool readPumpStatus();
+namespace HardwareDataManager {
+void peripheral_init();
+// 读取
 
-    bool readWaterLevel();
+double readTemperature();
+double readAirHumidity();
+uint16_t readSoilHumidity();
+double readIlluminance();
 
-    // 操作
+bool readFanStatus();
+bool readLightStatus();
+bool readHeaterStatus();
+bool readPumpStatus();
 
-    bool setFanStatus(bool status);
-    bool setLightStatus(bool status);
-    bool setHeaterStatus(const uint8_t duty_cycle);
-    bool setPumpStatus(bool status);
+bool readWaterLevel();
 
-    bool rotateTurntable(int deltaDegrees);
-};
+// 操作
 
+bool setFanStatus(bool status);
+bool setLightStatus(bool status);
+bool setHeaterStatus(const uint8_t duty_cycle);
+bool setPumpStatus(bool status);
 
-#endif //SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H
+bool rotateTurntable(float deltaDegrees);
+}; // namespace HardwareDataManager
+
+#endif // SELFSERVICEGREENHOUSE_FIRMWARE_HARDWAREDATAMANAGER_H

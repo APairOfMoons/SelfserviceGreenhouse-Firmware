@@ -1,6 +1,204 @@
 /* generated HAL source file - do not edit */
 #include "hal_data.h"
 
+adc_instance_ctrl_t g_adc0_ctrl;
+const adc_extended_cfg_t g_adc0_cfg_extend =
+{
+    .add_average_count   = ADC_ADD_OFF,
+    .clearing            = ADC_CLEAR_AFTER_READ_ON,
+    .trigger             = ADC_START_SOURCE_DISABLED,
+    .trigger_group_b     = ADC_START_SOURCE_DISABLED,
+    .double_trigger_mode = ADC_DOUBLE_TRIGGER_DISABLED,
+    .adc_vref_control    = ADC_VREF_CONTROL_VREFH,
+    .enable_adbuf        = 0,
+#if defined(VECTOR_NUMBER_ADC0_WINDOW_A)
+    .window_a_irq        = VECTOR_NUMBER_ADC0_WINDOW_A,
+#else
+    .window_a_irq        = FSP_INVALID_VECTOR,
+#endif
+    .window_a_ipl        = (BSP_IRQ_DISABLED),
+#if defined(VECTOR_NUMBER_ADC0_WINDOW_B)
+    .window_b_irq      = VECTOR_NUMBER_ADC0_WINDOW_B,
+#else
+    .window_b_irq      = FSP_INVALID_VECTOR,
+#endif
+    .window_b_ipl      = (BSP_IRQ_DISABLED),
+};
+const adc_cfg_t g_adc0_cfg =
+{
+    .unit                = 0,
+    .mode                = ADC_MODE_SINGLE_SCAN,
+    .resolution          = ADC_RESOLUTION_12_BIT,
+    .alignment           = (adc_alignment_t) ADC_ALIGNMENT_RIGHT,
+    .trigger             = (adc_trigger_t)0xF, // Not used
+    .p_callback          = adc0_callback,
+    /** If NULL then do not add & */
+#if defined(NULL)
+    .p_context           = NULL,
+#else
+    .p_context           = (void *) &NULL,
+#endif
+    .p_extend            = &g_adc0_cfg_extend,
+#if defined(VECTOR_NUMBER_ADC0_SCAN_END)
+    .scan_end_irq        = VECTOR_NUMBER_ADC0_SCAN_END,
+#else
+    .scan_end_irq        = FSP_INVALID_VECTOR,
+#endif
+    .scan_end_ipl        = (4),
+#if defined(VECTOR_NUMBER_ADC0_SCAN_END_B)
+    .scan_end_b_irq      = VECTOR_NUMBER_ADC0_SCAN_END_B,
+#else
+    .scan_end_b_irq      = FSP_INVALID_VECTOR,
+#endif
+    .scan_end_b_ipl      = (BSP_IRQ_DISABLED),
+};
+#if ((0) | (0))
+const adc_window_cfg_t g_adc0_window_cfg =
+{
+    .compare_mask        =  0,
+    .compare_mode_mask   =  0,
+    .compare_cfg         = (adc_compare_cfg_t) ((0) | (0) | (0) | (ADC_COMPARE_CFG_EVENT_OUTPUT_OR)),
+    .compare_ref_low     = 0,
+    .compare_ref_high    = 0,
+    .compare_b_channel   = (ADC_WINDOW_B_CHANNEL_0),
+    .compare_b_mode      = (ADC_WINDOW_B_MODE_LESS_THAN_OR_OUTSIDE),
+    .compare_b_ref_low   = 0,
+    .compare_b_ref_high  = 0,
+};
+#endif
+const adc_channel_cfg_t g_adc0_channel_cfg =
+{
+    .scan_mask           = ADC_MASK_CHANNEL_1 |  0,
+    .scan_mask_group_b   =  0,
+    .priority_group_a    = ADC_GROUP_A_PRIORITY_OFF,
+    .add_mask            =  0,
+    .sample_hold_mask    =  0,
+    .sample_hold_states  = 24,
+#if ((0) | (0))
+    .p_window_cfg        = (adc_window_cfg_t *) &g_adc0_window_cfg,
+#else
+    .p_window_cfg        = NULL,
+#endif
+};
+/* Instance structure to use this module. */
+const adc_instance_t g_adc0 =
+{
+    .p_ctrl    = &g_adc0_ctrl,
+    .p_cfg     = &g_adc0_cfg,
+    .p_channel_cfg = &g_adc0_channel_cfg,
+    .p_api     = &g_adc_on_adc
+};
+#include "r_sci_i2c_cfg.h"
+sci_i2c_instance_ctrl_t g_i2c0_ctrl;
+const sci_i2c_extended_cfg_t g_i2c0_cfg_extend =
+{
+    /* Actual calculated bitrate: 100000. Actual SDA delay: 302.0833333333333 ns. */ .clock_settings.clk_divisor_value = 0, .clock_settings.brr_value = 29, .clock_settings.mddr_value = 255, .clock_settings.bitrate_modulation = false, .clock_settings.cycles_value = 29,
+    .clock_settings.snfr_value         = (1),
+};
+
+const i2c_master_cfg_t g_i2c0_cfg =
+{
+    .channel             = 2,
+    .rate                = I2C_MASTER_RATE_STANDARD,
+    .slave               = 0x10,
+    .addr_mode           = I2C_MASTER_ADDR_MODE_7BIT,
+#define RA_NOT_DEFINED (1)
+#if (RA_NOT_DEFINED == RA_NOT_DEFINED)
+    .p_transfer_tx       = NULL,
+#else
+    .p_transfer_tx       = &RA_NOT_DEFINED,
+#endif
+#if (RA_NOT_DEFINED == RA_NOT_DEFINED)
+    .p_transfer_rx       = NULL,
+#else
+    .p_transfer_rx       = &RA_NOT_DEFINED,
+#endif
+#undef RA_NOT_DEFINED
+    .p_callback          = sci_i2c_master_callback,
+    .p_context           = NULL,
+#if defined(VECTOR_NUMBER_SCI2_RXI) && SCI_I2C_CFG_DTC_ENABLE
+    .rxi_irq             = VECTOR_NUMBER_SCI2_RXI,
+#else
+    .rxi_irq             = FSP_INVALID_VECTOR,
+#endif
+#if defined(VECTOR_NUMBER_SCI2_TXI)
+    .txi_irq             = VECTOR_NUMBER_SCI2_TXI,
+#else
+    .txi_irq             = FSP_INVALID_VECTOR,
+#endif
+#if defined(VECTOR_NUMBER_SCI2_TEI)
+    .tei_irq             = VECTOR_NUMBER_SCI2_TEI,
+#else
+    .tei_irq             = FSP_INVALID_VECTOR,
+#endif
+    .ipl                 = (12),    /* (BSP_IRQ_DISABLED) is unused */
+    .p_extend            = &g_i2c0_cfg_extend,
+};
+/* Instance structure to use this module. */
+const i2c_master_instance_t g_i2c0 =
+{
+    .p_ctrl        = &g_i2c0_ctrl,
+    .p_cfg         = &g_i2c0_cfg,
+    .p_api         = &g_i2c_master_on_sci
+};
+iic_master_instance_ctrl_t g_i2c_master0_ctrl;
+const iic_master_extended_cfg_t g_i2c_master0_extend =
+{
+    .timeout_mode             = IIC_MASTER_TIMEOUT_MODE_SHORT,
+    .timeout_scl_low          = IIC_MASTER_TIMEOUT_SCL_LOW_ENABLED,
+    .smbus_operation         = 0,
+    /* Actual calculated bitrate: 99272. Actual calculated duty cycle: 49%. */ .clock_settings.brl_value = 27, .clock_settings.brh_value = 26, .clock_settings.cks_value = 3, .clock_settings.sddl_value = 0, .clock_settings.dlcs_value = 0,
+};
+const i2c_master_cfg_t g_i2c_master0_cfg =
+{
+    .channel             = 0,
+    .rate                = I2C_MASTER_RATE_STANDARD,
+    .slave               = 0x38,
+    .addr_mode           = I2C_MASTER_ADDR_MODE_7BIT,
+#define RA_NOT_DEFINED (1)
+#if (RA_NOT_DEFINED == RA_NOT_DEFINED)
+                .p_transfer_tx       = NULL,
+#else
+                .p_transfer_tx       = &RA_NOT_DEFINED,
+#endif
+#if (RA_NOT_DEFINED == RA_NOT_DEFINED)
+                .p_transfer_rx       = NULL,
+#else
+                .p_transfer_rx       = &RA_NOT_DEFINED,
+#endif
+#undef RA_NOT_DEFINED
+    .p_callback          = i2c_callback,
+    .p_context           = NULL,
+#if defined(VECTOR_NUMBER_IIC0_RXI)
+    .rxi_irq             = VECTOR_NUMBER_IIC0_RXI,
+#else
+    .rxi_irq             = FSP_INVALID_VECTOR,
+#endif
+#if defined(VECTOR_NUMBER_IIC0_TXI)
+    .txi_irq             = VECTOR_NUMBER_IIC0_TXI,
+#else
+    .txi_irq             = FSP_INVALID_VECTOR,
+#endif
+#if defined(VECTOR_NUMBER_IIC0_TEI)
+    .tei_irq             = VECTOR_NUMBER_IIC0_TEI,
+#else
+    .tei_irq             = FSP_INVALID_VECTOR,
+#endif
+#if defined(VECTOR_NUMBER_IIC0_ERI)
+    .eri_irq             = VECTOR_NUMBER_IIC0_ERI,
+#else
+    .eri_irq             = FSP_INVALID_VECTOR,
+#endif
+    .ipl                 = (12),
+    .p_extend            = &g_i2c_master0_extend,
+};
+/* Instance structure to use this module. */
+const i2c_master_instance_t g_i2c_master0 =
+{
+    .p_ctrl        = &g_i2c_master0_ctrl,
+    .p_cfg         = &g_i2c_master0_cfg,
+    .p_api         = &g_i2c_master_on_iic
+};
 sci_uart_instance_ctrl_t     g_uart0_ctrl;
 
             baud_setting_t               g_uart0_baud_setting =
@@ -202,7 +400,7 @@ const gpt_extended_cfg_t g_timer0_extend =
 const timer_cfg_t g_timer0_cfg =
 {
     .mode                = TIMER_MODE_PWM,
-    /* Actual period: 0.0006826666666666667 seconds. Actual duty: 0%. */ .period_counts = (uint32_t) 0x10000, .duty_cycle_counts = 0x0, .source_div = (timer_source_div_t)0,
+    /* Actual period: 0.00006666666666666667 seconds. Actual duty: 0%. */ .period_counts = (uint32_t) 0x1900, .duty_cycle_counts = 0x0, .source_div = (timer_source_div_t)0,
     .channel             = 1,
     .p_callback          = NULL,
     /** If NULL then do not add & */
