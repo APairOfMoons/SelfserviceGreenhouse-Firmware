@@ -52,6 +52,7 @@ LogicController::LogicController(IHardwareData &hw, const LogicalStatics &config
       pump_active_(false),
       pump_started_once_(false),
       pump_dose_started_(false),
+      pump_timed_out_(false),
       pump_applied_ms_(0UL),
       turn_angle_(0),
       turn_direction_(1),
@@ -414,9 +415,12 @@ void LogicController::evaluate(uint32_t now_ms)
     if (pump_active_ &&
         (elapsed(now_ms, pump_start_ms_) >= (config_.variable.pumpDurationMs + config_.variable.pumpDurationMs)))
     {
-        reportFault(FAULT_PUMP_TIMEOUT, true); // 剂量保护都失效时的兜底
+        // 剂量保护都失效时的兜底：本拍记为"上次浇水超时"，并立即停泵。
+        // 告警保持到下一次剂量正常结束（而不是置位后永不清除）。
+        pump_timed_out_ = true;
         stopPump();
     }
+    reportFault(FAULT_PUMP_TIMEOUT, pump_timed_out_);
 
     // 手动模式超时 → 自动
     if ((OperatingMode::MANUAL == mode_) && reached(now_ms, manual_deadline_ms_))
@@ -482,20 +486,11 @@ void LogicController::applyConflictPolicy(uint32_t now_ms)
         }
     }
 
-    // 2) 低温高湿：加热与通风互斥，只有"湿度远超上限 + 脉冲窗口"才破例
-    if (policy_.block_fan_while_heating &&
-        outputs_[static_cast<uint8_t>(OutputId::HEATER)] &&
-        outputs_[static_cast<uint8_t>(OutputId::FAN)])
+    // 2) 低温高湿：加热与通风互斥，只有"湿度远超上限 + 脉冲窗口"才破例。
+    //    正常路径已在 updateAirHumidityControl 前置拦住，这里作为最后一道保险。
+    if (outputs_[static_cast<uint8_t>(OutputId::FAN)] && fanBlockedByHeater(now_ms))
     {
-        const bool humidity_override =
-            sensorOk(air_humidity_) &&
-            (air_humidity_.value >=
-             (config_.variable.maxAirHumidity + policy_.fan_humidity_override_pct));
-
-        if (!(humidity_override && fanPulseOpen(now_ms)))
-        {
-            setOutput(OutputId::FAN, false);
-        }
+        setOutput(OutputId::FAN, false);
     }
 
     // 3) 加热与浇水互斥：浇水是短动作，让路给持续加热，下一拍再试
@@ -546,6 +541,25 @@ bool LogicController::fanPulseOpen(uint32_t now_ms) const
 
     const uint32_t phase = elapsed(now_ms, boot_ms_) % total;
     return phase < on;
+}
+
+bool LogicController::fanBlockedByHeater(uint32_t now_ms) const
+{
+    if (!policy_.block_fan_while_heating)
+    {
+        return false;
+    }
+    if (!outputs_[static_cast<uint8_t>(OutputId::HEATER)])
+    {
+        return false;
+    }
+
+    const bool humidity_override =
+        sensorOk(air_humidity_) &&
+        (air_humidity_.value >=
+         (config_.variable.maxAirHumidity + policy_.fan_humidity_override_pct));
+
+    return !(humidity_override && fanPulseOpen(now_ms));
 }
 
 uint8_t LogicController::countOutputsOn() const
@@ -646,6 +660,13 @@ void LogicController::updateAirHumidityControl(uint32_t now_ms)
     else
     {
         want = false; // 湿度不可测时不做排湿
+    }
+
+    // 加热中默认不通风：在"是否允许开"这一层就拦住。否则会被
+    // applyConflictPolicy 关掉、下一拍又开，形成每隔 30 s 一次的周期通断。
+    if (want && fanBlockedByHeater(now_ms))
+    {
+        want = false;
     }
 
     if (want != outputs_[index])
@@ -796,6 +817,8 @@ void LogicController::updateIrrigation(uint32_t now_ms)
 
         if (elapsed(now_ms, pump_applied_ms_) >= config_.variable.pumpDurationMs)
         {
+            pump_timed_out_ = false; // 本次剂量正常结束，清掉上一次的超时告警
+            reportFault(FAULT_PUMP_TIMEOUT, false);
             stopPump();
         }
         return;
@@ -806,10 +829,25 @@ void LogicController::updateIrrigation(uint32_t now_ms)
         return; // 土壤湿度不可测时不浇水
     }
 
-    if (soil_humidity_.value <= config_.variable.minSoilHumidity)
+    if (soil_humidity_.value > config_.variable.minSoilHumidity)
     {
-        startPump(now_ms);
+        return; // 土还够湿
     }
+
+    // 下面两个检查必须在"启动前"完成：先开再被冲突仲裁关掉，会白占一次
+    // 每日浇水配额，泵还会被短脉冲通断一次。
+    if (policy_.pump_blocked_on_over_temperature && sensorOk(temperature_) &&
+        (temperature_.value > config_.variable.maxTemperature))
+    {
+        return; // 超温不浇水
+    }
+
+    if (policy_.heater_pump_mutex && outputs_[static_cast<uint8_t>(OutputId::HEATER)])
+    {
+        return; // 加热与浇水互斥，等加热结束后的下一拍再试
+    }
+
+    startPump(now_ms);
 }
 
 void LogicController::updateTurntable(uint32_t now_ms)

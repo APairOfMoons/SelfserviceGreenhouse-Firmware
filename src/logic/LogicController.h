@@ -169,6 +169,9 @@ class LogicController
     void applyConflictPolicy(uint32_t now_ms);
 
     bool fanPulseOpen(uint32_t now_ms) const;
+    // 加热中是否应禁止风扇（含"湿度远超上限 + 脉冲窗口"的破例）。
+    // 在 updateAirHumidityControl 里前置判断，避免"开了又被冲突仲裁关掉"的周期通断。
+    bool fanBlockedByHeater(uint32_t now_ms) const;
     uint8_t countOutputsOn() const;
 
     bool isDaytime(uint32_t now_ms) const;
@@ -229,6 +232,7 @@ class LogicController
     bool pump_active_;
     bool pump_started_once_;
     bool pump_dose_started_;   // 泵真正通电后才开始计剂量时间
+    bool pump_timed_out_;      // 上一次剂量超时（下次剂量正常结束才清除）
     uint32_t pump_applied_ms_;
 
     int16_t turn_angle_;

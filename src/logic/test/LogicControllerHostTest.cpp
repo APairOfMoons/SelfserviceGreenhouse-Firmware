@@ -337,8 +337,24 @@ void testOverTempBlocksPump()
     h.hw.temperature = 35.0F;
     h.hw.soil_humidity = 20.0F;
 
-    h.advance(300UL);
+    h.advance(4UL * kSecond);
     CHECK(!h.hw.pump_on);
+    // 不能"先开一拍再被冲突仲裁关掉"：否则会白占一次每日配额、泵也会被短脉冲通断
+    CHECK(h.hw.pump_toggles == 0U);
+    CHECK(h.ctrl.snapshot().pump_runs_today == 0U);
+}
+
+// 低温高湿但没到破例线：风扇不应反复通断（避免继电器被 30 s 周期磨损）
+void testLowTempHighHumidityDoesNotChatterFan()
+{
+    Harness h;
+    h.hw.temperature = 15.0F;
+    h.hw.air_humidity = 80.0F; // 上限 75，未到 85 的破例线
+
+    h.advance(70UL * kSecond);
+    CHECK(h.hw.heater_on);
+    CHECK(!h.hw.fan_on);
+    CHECK(h.hw.fan_toggles == 0U);
 }
 
 // 功率预算：同时最多 1 路动作时，保留加热
@@ -422,6 +438,28 @@ void testPumpStopsWhenSoilWet()
     h.hw.soil_humidity = 60.0F;
     h.advance(300UL);
     CHECK(!h.hw.pump_on);
+}
+
+// 剂量超时置位后，下一次正常剂量结束时应清除（不能永远挂着）
+void testPumpTimeoutClearsAfterNextDose()
+{
+    Harness h;
+    h.params.variable.pumpMinIntervalMs = 0UL;
+    h.params.variable.pumpMaxPerDay = 12U;
+    h.ctrl.setConfiguration(h.params);
+
+    h.hw.soil_humidity = 20.0F;
+    h.advance(300UL);
+    CHECK(h.hw.pump_on);
+
+    // 模拟控制循环被长时间阻塞：一次 step 跳过 2 倍剂量时间 → 触发兜底
+    h.now += (2UL * 800UL) + 100UL;
+    h.ctrl.step(h.now);
+    CHECK((h.ctrl.faults() & greenhouse::FAULT_PUMP_TIMEOUT) != 0U);
+    CHECK(h.hw.pump_on); // 同一拍里已经重新起泵
+
+    h.advance(900UL); // 新剂量正常结束
+    CHECK((h.ctrl.faults() & greenhouse::FAULT_PUMP_TIMEOUT) == 0U);
 }
 
 // 低湿诊断位带回滞，不在阈值附近抖动
@@ -780,12 +818,14 @@ int main()
     testLowTempHighHumidityBlocksFan();
     testLowTempVeryHighHumidityPulsesFan();
     testOverTempBlocksPump();
+    testLowTempHighHumidityDoesNotChatterFan();
     testPowerBudgetKeepsHeater();
     testLowHumidityIsDiagnosed();
 
     testOverTempBypassesFanGate();
     testPumpOffRetried();
     testPumpStopsWhenSoilWet();
+    testPumpTimeoutClearsAfterNextDose();
     testLowHumidityHysteresis();
     testLightWithoutTimeBase();
     testTurntableBackoff();
