@@ -25,6 +25,7 @@ extern "C"
 {
 volatile uint8_t g_wifiStatus = 0xFFU;
 volatile uint32_t g_wifiJoinFails = 0U;
+volatile uint32_t g_wifiAutoConnFails = 0U;
 char g_wifiLastJoinLine[AT_LINE_MAX] = {0};
 }
 
@@ -61,7 +62,18 @@ bool EspAtWifi::setStationMode(uint32_t timeoutMs)
 
 bool EspAtWifi::enableAutoConnect(uint32_t timeoutMs)
 {
-    return AtChannel::execute("AT+CWAUTOCONN=1", timeoutMs).status == AtStatus::kOk;
+    /*
+     * 这条命令只是省一次 CWJAP：模块自己重连上就少发一条。老一点的 AT 固件
+     * 没有它、会回 ERROR，所以调用方不该把它当硬性前置条件；这里单独计数，
+     * 让"到底支不支持"在调试器里一眼可见。
+     */
+    if (AtChannel::execute("AT+CWAUTOCONN=1", timeoutMs).status == AtStatus::kOk)
+    {
+        return true;
+    }
+
+    ++g_wifiAutoConnFails;
+    return false;
 }
 
 

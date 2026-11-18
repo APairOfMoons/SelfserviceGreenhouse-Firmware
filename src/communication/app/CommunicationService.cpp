@@ -59,8 +59,17 @@ constexpr uint32_t kWifiRetries = 3U;
 constexpr uint32_t kBootRoundsBeforeFault = 5U;
 constexpr uint32_t kPublishFailuresBeforeReconnect = 3U;
 
-/* LWT 报文。载荷在连接时登记，运行时改不了，所以没有 b。 */
-constexpr const char *kLwtPayload = "{\"v\":2,\"online\":false}";
+/*
+ * LWT 报文。
+ *
+ * 只能是纯文本：这块固件的 CONNCFG 收不下带转义双引号的 JSON——实测 75 B 的
+ * `{"v":2,"online":false}` 回 ERROR，56 B 的 `offline` 通过（docs/AT_COMMAND_SET.md
+ * §4.1）。所以 status 上有两种载荷形态，消费方按首个字符区分。
+ *
+ * 载荷在连接时登记、运行时改不了，因此遗嘱里也没有 b——离线帧不带会话号，
+ * 这是已知且无害的不对称。
+ */
+constexpr const char *kLwtPayload = "offline";
 
 
 CommRtosQueue s_queue = nullptr;
@@ -132,14 +141,21 @@ void stepBooting()
 
 void stepModuleReady()
 {
+    /* 这两条每次复位后都要重发，失败就退回探测 */
     if (!EspAtWifi::disableEcho(COMM_CONFIGURATION.AT_TIMEOUT_MS) ||
-        !EspAtWifi::setStationMode(COMM_CONFIGURATION.AT_TIMEOUT_MS) ||
-        !EspAtWifi::enableAutoConnect(COMM_CONFIGURATION.AT_TIMEOUT_MS))
+        !EspAtWifi::setStationMode(COMM_CONFIGURATION.AT_TIMEOUT_MS))
     {
-        /* 这些命令在每次复位后都要重发，失败就退回探测 */
         s_state = CommunicationService::State::kBooting;
         return;
     }
+
+    /*
+     * 自动重连是锦上添花，不是前置条件：老固件没有 CWAUTOCONN，它会回 ERROR。
+     * 从前把它和上面两条并列，一条不支持就永远进不了 Wi-Fi 阶段，
+     * 现象恰好是"卡在关联热点"（TROUBLESHOOTING.md §2.2）。kWifiReady 里本来
+     * 就会显式 CWJAP，少了它只是每次复位多一条命令。
+     */
+    (void) EspAtWifi::enableAutoConnect(COMM_CONFIGURATION.AT_TIMEOUT_MS);
 
     s_state = CommunicationService::State::kWifiReady;
 }
@@ -171,6 +187,17 @@ void stepMqttConnecting()
         s_state = CommunicationService::State::kFault;
         return;
     }
+
+    /*
+     * 先清一次会话再配置。
+     *
+     * 模块把订阅的过滤器存在自己那边，重连时并不会因为 Broker 侧 clean session
+     * 就丢掉；同一 topic 订两次会让每条下行报文回调两次（docs/AT_COMMAND_SET.md
+     * §4.3）。我们的流程是每次上线都重订阅，所以这里必须先把残留清掉，
+     * 否则配置报文会被重复应用、ack 也会发两遍。
+     * 未连接时它同样回 OK，失败也无所谓——下一步的 CONN 才是真正的判据。
+     */
+    (void) EspAtMqtt::cleanSession(COMM_CONFIGURATION.AT_TIMEOUT_MS);
 
     if (!EspAtMqtt::configure(COMM_CONFIGURATION.DEVICE_ID,
                               COMM_CONFIGURATION.DEVICE_ID,
