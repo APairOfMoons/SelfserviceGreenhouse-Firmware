@@ -52,6 +52,7 @@ openocd.log
 # persisted state out of the repository.
 /src/communication/deploy/
 /src/communication/tests/
+/src/communication/docs/
 
 # ---------- IDE ----------
 # Note: .settings/ .vscode/ .theia/ are a part of the project.

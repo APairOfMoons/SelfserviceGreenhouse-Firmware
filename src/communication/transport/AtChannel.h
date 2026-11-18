@@ -16,7 +16,13 @@ constexpr uint32_t AT_TOPIC_MAX = 64U;
 /* 单条下行配置报文的接收上限。超出即截断，由上层按语法错误拒绝。 */
 constexpr uint32_t AT_PAYLOAD_MAX = 224U;
 
-/* 单条 AT 命令的最大长度。ESP8266 的 AT 固件上限是 256 字节（约束 C2）。 */
+/*
+ * 命令行缓冲的大小，**不是**模块接受的上限。
+ *
+ * 这块固件的长度上限实测到"59 B 通过、75 B 被拒"，具体值没测出来（见
+ * docs/AT_COMMAND_SET.md §4.1）。本项目最长的命令是带告警 topic 的 PUBRAW，
+ * 约 60 B，留出余量后按 256 开缓冲；g_atMaxCommandLength 会记下实际最长值。
+ */
 constexpr uint32_t AT_COMMAND_MAX = 256U;
 
 

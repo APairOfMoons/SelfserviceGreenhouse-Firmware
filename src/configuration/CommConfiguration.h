@@ -32,7 +32,7 @@ struct CommStatics
 constexpr CommStatics COMM_CONFIGURATION = {
     "GH-0001",
 
-    "LAPTOP-KC3EICKH 0359",
+    "LAPTOP-KC3EICKH",
     "5qD9]816",
 
     "192.168.137.1",

@@ -8,11 +8,40 @@
 #include <cstdint>
 
 
+/** 最近一次 MQTT 交互失败在哪一步。0 表示这一轮还没失败过。 */
+enum class MqttFailStep : uint8_t
+{
+    kNone = 0,
+    kParam = 1,     ///< 参数本身不合法（含引号/反斜杠），命令根本没发出去
+    kUserCfg = 2,   ///< AT+MQTTUSERCFG
+    kConnCfg = 3,   ///< AT+MQTTCONNCFG
+    kConnect = 4,   ///< AT+MQTTCONN
+    kSubscribe = 5, ///< AT+MQTTSUB
+    kPublish = 6,   ///< AT+MQTTPUBRAW
+};
+
+
+/*
+ * 失败现场，供调试器查看（与 AtChannel / CommunicationService 同一套路）。
+ *
+ * g_atLastLine 也会留一行，但失败之后状态机通常还会补发 AT+MQTTCLEAN 之类，
+ * 那一行很快被覆盖；这里在失败发生的当口单独存一份，才留得住。
+ */
+extern "C"
+{
+extern volatile uint8_t g_mqttFailStep;   /* MqttFailStep */
+extern volatile uint8_t g_mqttFailStatus; /* AtStatus */
+extern char g_mqttFailLine[];
+}
+
+
 /**
  * MQTT 相关的 AT 命令。
  *
- * 与 EspAtWifi 一样只做序列封装、不留状态。字符串参数里的双引号会转义成
- * `\"`，否则 LWT 报文那种含 JSON 的字段会把命令行截断。
+ * 与 EspAtWifi 一样只做序列封装、不留状态。字符串参数按原样放进双引号里，
+ * **不做转义**：这块固件不支持 `\"`，实测含转义引号的 CONNCFG 直接回 ERROR
+ * （见 docs/AT_COMMAND_SET.md §4.1）。参数里一旦出现引号或反斜杠，整条命令
+ * 当场判失败，不发给模块——报一个明确的失败，好过发一条注定被拒的命令。
  *
  * 注意：`+MQTTPUB:OK` 只表示模块协议栈收下了这条报文，不代表 broker 确认
  * （约束 C6）。可靠性靠 QoS1 和客户端侧的等待。
@@ -23,11 +52,15 @@ class EspAtMqtt
     /**
      * AT+MQTTUSERCFG + AT+MQTTCONNCFG。
      *
+     * CONNCFG 失败**不算整体失败**：它只登记遗嘱与 keepalive，缺了还能连上、
+     * 还能上报，只是设备失联时客户端看不到 offline。USERCFG 失败则必然连不上，
+     * 直接返回 false。
+     *
      * @param clientId   同时用作 MQTT clientId
      * @param username   同时用作 MQTT username（设备 ID）
      * @param password   MQTT 密码
      * @param lwtTopic   LWT topic，通常就是 status
-     * @param lwtPayload LWT 报文，含双引号也没问题，这里会转义
+     * @param lwtPayload LWT 报文，只能是纯文本，不能含双引号或反斜杠
      */
     static bool configure(const char *clientId,
                           const char *username,

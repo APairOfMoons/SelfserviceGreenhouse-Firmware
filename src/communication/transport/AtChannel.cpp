@@ -16,12 +16,18 @@
  * 上板时最常问的三个问题是：命令发出去了吗、最后发的是哪条、模块怎么回的。
  * 这三个变量分别回答它们，符号是 C 链接的，调试器里直接看变量名即可。
  * 只供观察，不参与逻辑。
+ *
+ * g_atMaxCommandLength 记的是历史最长的一条命令（不含 CRLF）。这块固件的
+ * 命令行长度上限没有定论——实测 59 B 通过、75 B 被拒（见
+ * docs/AT_COMMAND_SET.md §4.1），所以留一个观察值：它若逼近六十多，
+ * 就该怀疑是撞了长度而不是参数错。
  */
 extern "C"
 {
 volatile uint32_t g_atCommandCount = 0U;
 volatile uint8_t  g_atLastStatus   = 0U;   /* 0=OK 1=ERROR 2=FAIL 3=PROMPT 4=TIMEOUT */
-char g_atLastCommand[64]           = {0};
+volatile uint32_t g_atMaxCommandLength = 0U;
+char g_atLastCommand[128]          = {0};
 char g_atLastLine[AT_LINE_MAX]     = {0};
 }
 
@@ -360,17 +366,28 @@ void recordAt(const char *command, AtStatus status, const char *line)
                                       : (sizeof(g_atLastCommand) - 1U);
         std::memcpy(g_atLastCommand, command, limit);
         g_atLastCommand[limit] = '\0';
+
+        if (length > g_atMaxCommandLength)
+        {
+            g_atMaxCommandLength = static_cast<uint32_t>(length);
+        }
     }
 
     g_atLastStatus = static_cast<uint8_t>(status);
 
+    /*
+     * 先整块清零再写。只写 strlen+1 的话，短行后面会留着上一条的长尾巴，
+     * 调试器按数组视图看是一片"乱码"，容易误判成模块回了怪东西。
+     */
+    std::memset(g_atLastLine, 0, sizeof(g_atLastLine));
+
     if (line != nullptr)
     {
-        std::memcpy(g_atLastLine, line, std::strlen(line) + 1U);
-    }
-    else
-    {
-        g_atLastLine[0] = '\0';
+        const std::size_t length = std::strlen(line);
+        const std::size_t limit = (length < (sizeof(g_atLastLine) - 1U))
+                                      ? length
+                                      : (sizeof(g_atLastLine) - 1U);
+        std::memcpy(g_atLastLine, line, limit);
     }
 }
 
