@@ -52,5 +52,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/Config.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/GeneratedCfg.cmake)
 
 # If required user can amend RASC generated flags here, e.g. list(REMOVE_ITEM RASC_CMAKE_C_FLAGS "-Wall")
+# Keep linker multilib selection consistent with RASC_CMAKE_CXX_FLAGS (-fno-exceptions -fno-rtti) so clang++ does not pull in exception/unwind libc++.a (_exit).
+list(APPEND RASC_CMAKE_EXE_LINKER_FLAGS "-fno-exceptions" "-fno-rtti")
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/GeneratedSrc.cmake)

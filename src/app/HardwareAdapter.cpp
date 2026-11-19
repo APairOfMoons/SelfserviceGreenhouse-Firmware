@@ -13,6 +13,8 @@
 
 #include "hardware/HardwareDataManager.h"
 
+#include <cmath>
+
 namespace
 {
 
@@ -21,6 +23,8 @@ constexpr double kMinTemperature = -40.0;
 constexpr double kMaxTemperature = 85.0; // AHT20 量程上限
 constexpr double kMinHumidity = 0.0;
 constexpr double kMaxHumidity = 100.0;
+constexpr float kMinSoilHumidity = 0.0F;
+constexpr float kMaxSoilHumidity = 100.0F;
 constexpr double kMaxIlluminance = 65535.0; // uint16 上限，超出按饱和处理
 
 } // namespace
@@ -43,7 +47,8 @@ bool HardwareAdapter::readTemperatureHumidity(float *out_temperature,
         return false; // 一次读取失败，两路都不可信
     }
 
-    if ((temperature < kMinTemperature) || (temperature > kMaxTemperature) ||
+    if (!std::isfinite(temperature) || !std::isfinite(air_humidity) ||
+        (temperature < kMinTemperature) || (temperature > kMaxTemperature) ||
         (air_humidity < kMinHumidity) || (air_humidity > kMaxHumidity))
     {
         return false;
@@ -62,7 +67,8 @@ bool HardwareAdapter::readSoilHumidity(float *out_soil_humidity)
     }
 
     const float value = HardwareDataManager::readSoilHumidity();
-    if ((value < kMinHumidity) || (value > kMaxHumidity))
+    if (!std::isfinite(value) || (value < kMinSoilHumidity) ||
+        (value > kMaxSoilHumidity))
     {
         return false;
     }
@@ -79,7 +85,7 @@ bool HardwareAdapter::readIlluminance(uint16_t *out_illuminance)
     }
 
     double value = HardwareDataManager::readIlluminance();
-    if (value < 0.0)
+    if (!std::isfinite(value) || (value < 0.0))
     {
         return false;
     }
@@ -99,8 +105,14 @@ bool HardwareAdapter::readWaterLevel(bool *out_has_enough_water)
         return false;
     }
 
-    // 水位只有开关量（浮球/液位开关），高电平 = 水够用。
-    *out_has_enough_water = HardwareDataManager::readWaterLevel();
+    // 水位只有开关量（浮球/液位开关），高电平 = 水够用；读取失败返回 false 且不改出参。
+    bool has_water = false;
+    if (!HardwareDataManager::readWaterLevel(&has_water))
+    {
+        return false;
+    }
+
+    *out_has_enough_water = has_water;
     return true;
 }
 
@@ -127,6 +139,10 @@ bool HardwareAdapter::setPumpStatus(bool status)
 
 bool HardwareAdapter::rotateTurntable(int deltaDegrees)
 {
+    if (0 == deltaDegrees)
+    {
+        return true;
+    }
     return HardwareDataManager::rotateTurntable(static_cast<float>(deltaDegrees));
 }
 
