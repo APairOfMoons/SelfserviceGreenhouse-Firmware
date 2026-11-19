@@ -63,3 +63,4 @@ openocd.log
 *.md
 /ozone.jdebug
 /ozone.jdebug.user
+/.codegraph/codegraph.db

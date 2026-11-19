@@ -40,6 +40,7 @@ Additional information:
 
 #include "SEGGER_RTT.h"
 
+#include <stdio.h>
 #include <string.h>                 // for memcpy
 
 /*********************************************************************
@@ -2052,6 +2053,21 @@ unsigned SEGGER_RTT_GetBytesInBuffer(unsigned BufferIndex) {
     r = pRTTCB->aUp[BufferIndex].SizeOfBuffer - (RdOff - WrOff);
   }
   return r;
+}
+
+int rtt_printf(const char *fmt, ...) {
+  char aBuffer[256]; // 根据应用需求调整大小
+  va_list args;
+
+  va_start(args, fmt);
+  const int n = vsnprintf(aBuffer, sizeof(aBuffer), fmt, args);
+  if (n > (int)sizeof(aBuffer)) {
+    SEGGER_RTT_Write(0, aBuffer, sizeof(aBuffer));
+  } else if (n > 0) {
+    SEGGER_RTT_Write(0, aBuffer, (unsigned int)n);
+  }
+  va_end(args);
+  return n;
 }
 
 /*************************** End of file ****************************/

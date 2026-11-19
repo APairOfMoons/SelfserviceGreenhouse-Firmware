@@ -14,7 +14,7 @@ Purpose : Implementation of SEGGER real-time transfer which allows
           real-time communication on targets which support debugger
           memory accesses while the CPU is running.
 
-          SEGGER strongly recommends to not make any changes to or 
+          SEGGER strongly recommends to not make any changes to or
           modify the source code of this software in order to stay
           compatible with the RTT protocol and J-Link.
 
@@ -369,6 +369,7 @@ unsigned     SEGGER_RTT_PutCharSkip             (unsigned BufferIndex, char c);
 unsigned     SEGGER_RTT_PutCharSkipNoLock       (unsigned BufferIndex, char c);
 unsigned     SEGGER_RTT_GetAvailWriteSpace      (unsigned BufferIndex);
 unsigned     SEGGER_RTT_GetBytesInBuffer        (unsigned BufferIndex);
+int          rtt_printf                         (const char *fmt, ...);
 //
 // Function macro for performance optimization
 //

@@ -35,7 +35,7 @@ constexpr CommStatics COMM_CONFIGURATION = {
     "LAPTOP-KC3EICKH",
     "5qD9]816",
 
-    "192.168.137.1",
+    "endpoint.blackblade.dev",
     1883,
     "Mq#Password",
 
