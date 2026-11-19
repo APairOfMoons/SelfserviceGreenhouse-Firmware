@@ -14,8 +14,32 @@ const char *AlarmPayload::code(GreenhouseException exception)
         case GreenhouseException::WATER_LACK_EXCEPTION:
             return "water_lack";
 
+        case GreenhouseException::TEMPERATURE_SENSOR_EXCEPTION:
+            return "temp_sensor";
+
+        case GreenhouseException::AIR_HUMIDITY_SENSOR_EXCEPTION:
+            return "humidity_sensor";
+
+        case GreenhouseException::SOIL_HUMIDITY_SENSOR_EXCEPTION:
+            return "soil_sensor";
+
+        case GreenhouseException::ILLUMINANCE_SENSOR_EXCEPTION:
+            return "lux_sensor";
+
+        case GreenhouseException::OVER_TEMPERATURE_EXCEPTION:
+            return "over_temp";
+
+        case GreenhouseException::PUMP_TIMEOUT_EXCEPTION:
+            return "pump_timeout";
+
         case GreenhouseException::TURNTABLE_FAILED_EXCEPTION:
             return "turntable_failed";
+
+        case GreenhouseException::TIME_UNSET_EXCEPTION:
+            return "time_unset";
+
+        case GreenhouseException::AIR_HUMIDITY_LOW_EXCEPTION:
+            return "humidity_low";
 
         default:
             return "unknown";
