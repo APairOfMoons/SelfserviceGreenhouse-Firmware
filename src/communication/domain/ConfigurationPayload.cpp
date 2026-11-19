@@ -236,6 +236,16 @@ class Parser
             config->maxIlluminance = static_cast<double>(value);
             return true;
         }
+        if (equals(key, "luxHyst"))
+        {
+            /* 光照回滞：整数 lx，负数拒绝；上限由 modifyConfiguration 校验 */
+            if (value < 0)
+            {
+                return false;
+            }
+            config->illuminanceHysteresis = static_cast<double>(value);
+            return true;
+        }
 
         /* 无符号毫秒量：负数直接拒绝 */
         if (equals(key, "luxOnMs"))

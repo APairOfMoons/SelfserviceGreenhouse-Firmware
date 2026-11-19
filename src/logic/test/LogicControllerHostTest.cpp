@@ -228,6 +228,29 @@ void testLightOnlyInDaytime()
     CHECK(!h.hw.light_on);
 }
 
+// 补光回滞：低于 1200 开，高于 1200 + 200 才关；中间保持
+void testLightHysteresis()
+{
+    Harness h;
+    h.params.variable.illuminanceHysteresis = 200.0;
+    h.ctrl.setConfiguration(h.params);
+
+    h.ctrl.setTimeOfDay(12UL * kHour);
+    h.hw.illuminance = 1000U;
+    h.advance(2UL * kSecond);
+    CHECK(h.hw.light_on);
+
+    // 已过最短点亮时间，光照回到 1300（未越过 1400）→ 保持点亮
+    h.hw.illuminance = 1300U;
+    h.advance(11UL * kMinute);
+    CHECK(h.hw.light_on);
+
+    // 越过 1200 + 200 = 1400 → 关灯
+    h.hw.illuminance = 1450U;
+    h.advance(2UL * kSecond);
+    CHECK(!h.hw.light_on);
+}
+
 // 9) 白天摆动、夜间回中位
 // 节律由每日受光角度换算：120 / 15 = 8 次，白天 10 h / 8 = 75 min
 void testTurntableSwingAndPark()
@@ -855,6 +878,7 @@ int main()
     testTemperatureSensorFault();
     testOverTemperatureInterlock();
     testLightOnlyInDaytime();
+    testLightHysteresis();
     testTurntableSwingAndPark();
     testTurntableFallbackInterval();
     testTurntableSmallDailyAngleRoundsUp();

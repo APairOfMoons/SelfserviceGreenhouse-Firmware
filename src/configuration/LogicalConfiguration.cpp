@@ -88,6 +88,9 @@ bool validate(const VariableStatics &candidate)
                         (candidate.pumpMaxPerDay >= 1U) && (candidate.pumpMaxPerDay <= 12U);
 
     const bool lightOk = (candidate.illuminanceMinOnMs <= kDayMs) &&
+                         (candidate.illuminanceHysteresis >= 0.0) &&
+                         (candidate.illuminanceHysteresis <
+                          (candidate.maxIlluminance - candidate.minIlluminance)) &&
                          (candidate.dayLengthMs >= kMinuteMs) &&
                          (candidate.dayLengthMs <= kDayMs) && (candidate.dayStartMs < kDayMs);
 
@@ -126,6 +129,7 @@ LogicalStatics makeDefaultConfiguration()
 
     config.variable.minIlluminance = 1200.0;
     config.variable.maxIlluminance = 100000.0;
+    config.variable.illuminanceHysteresis = 200.0;
     config.variable.illuminanceMinOnMs = 10UL * kMinuteMs;
 
     config.variable.dayStartMs = 7UL * kHourMs;
