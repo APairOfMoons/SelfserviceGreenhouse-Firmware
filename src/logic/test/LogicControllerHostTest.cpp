@@ -77,7 +77,6 @@ LogicalStatics fastParams()
     params.variable.samplePeriodMs = kStepMs;
     params.fixed.sensorFailLimit = 3U;
     params.fixed.manualTimeoutMs = 60UL * kSecond;
-    params.fixed.hasRtc = true;
 
     return params;
 }

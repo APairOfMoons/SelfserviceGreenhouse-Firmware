@@ -95,11 +95,6 @@ void LogicController::setConfiguration(const LogicalStatics &configuration)
     config_ = configuration;
 }
 
-const LogicalStatics &LogicController::configuration() const
-{
-    return config_;
-}
-
 void LogicController::setConflictPolicy(const ConflictPolicy &policy)
 {
     policy_ = policy;
@@ -184,13 +179,6 @@ void LogicController::setTimeOfDay(uint32_t ms_of_day)
     time_of_day_ms_ = ms_of_day % kDayMs;
     time_base_ms_ = last_step_ms_;
     time_valid_ = true;
-}
-
-void LogicController::clearTimeOfDay()
-{
-    time_valid_ = false;
-    time_of_day_ms_ = 0UL;
-    time_base_ms_ = 0UL;
 }
 
 uint32_t LogicController::timeOfDay(uint32_t now_ms) const

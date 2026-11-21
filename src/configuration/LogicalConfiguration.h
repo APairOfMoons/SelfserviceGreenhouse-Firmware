@@ -61,7 +61,6 @@ struct FixedStatics
 {
     uint8_t sensorFailLimit;          // 连续失败多少次判定传感器故障
     uint32_t manualTimeoutMs;         // 手动模式超时
-    bool hasRtc;                      // 是否具备时间基准
 };
 
 // ---------- 完整逻辑配置 ----------

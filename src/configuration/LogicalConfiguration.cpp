@@ -147,7 +147,6 @@ LogicalStatics makeDefaultConfiguration()
 
     config.fixed.sensorFailLimit = 3U;
     config.fixed.manualTimeoutMs = 30UL * kMinuteMs;
-    config.fixed.hasRtc = false;
 
     return config;
 }

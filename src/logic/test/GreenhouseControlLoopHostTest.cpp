@@ -3,7 +3,7 @@
 //
 // 用法（在仓库根目录，主机编译器，C++11）：
 //   g++ -std=c++11 -DLOGIC_HOST_TEST -Isrc src/logic/LogicController.cpp
-//       src/logic/VariableJudge.cpp src/logic/TelemetryReporter.cpp
+//       src/logic/TelemetryReporter.cpp
 //       src/logic/FakeHardware.cpp src/app/ExceptionMapping.cpp
 //       src/app/MonitoringDataMapper.cpp src/app/GreenhouseControlLoop.cpp
 //       src/configuration/LogicalConfiguration.cpp
@@ -88,7 +88,6 @@ void initTestParams(LogicalStatics *out_params)
 
     params.fixed.sensorFailLimit = 3U;
     params.fixed.manualTimeoutMs = 60UL * kSecond;
-    params.fixed.hasRtc = true;
 
     *out_params = params;
 }

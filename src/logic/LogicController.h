@@ -121,7 +121,6 @@ class LogicController
 
     // ---------- 配置 ----------
     void setConfiguration(const LogicalStatics &configuration);
-    const LogicalStatics &configuration() const;
 
     // 冲突仲裁策略（超温禁补光、低温高湿时通风让路等）。
     void setConflictPolicy(const ConflictPolicy &policy);
@@ -135,9 +134,8 @@ class LogicController
     bool setManualOutput(OutputId id, bool on, uint32_t now_ms);
 
     // ---------- 时间 ----------
-    // 由上层（RTC 或联网校时）提供当天已过的毫秒数；未校时前不要调用。
+    // 由上层（SNTP 等校时来源）提供当天已过的毫秒数；未校时前不要调用。
     void setTimeOfDay(uint32_t ms_of_day);
-    void clearTimeOfDay();
 
     // ---------- 主循环 ----------
     // 需周期性调用（建议 100 ms ~ 1 s）。内部按 sample_period_ms 控制采样频率。
