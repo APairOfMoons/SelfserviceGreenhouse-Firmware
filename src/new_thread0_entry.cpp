@@ -3,13 +3,21 @@
 #include <new>
 #include <stdint.h>
 
+#ifndef GREENHOUSE_USE_FAKE_HARDWARE
+#define GREENHOUSE_USE_FAKE_HARDWARE 1
+#endif
+
 #include "app/ExceptionMapping.h"
 #include "app/GreenhouseControlLoop.h"
+#if GREENHOUSE_USE_FAKE_HARDWARE
+#include "logic/FakeHardware.h"
+#else
 #include "app/HardwareAdapter.h"
+#include "hardware/HardwareDataManager.h"
+#endif
 #include "app/MessageSenderSink.h"
 #include "communication/app/MessageSender.h"
 #include "configuration/LogicalConfiguration.h"
-#include "hardware/HardwareDataManager.h"
 #include "logic/LogicController.h"
 #include "logic/TelemetryReporter.h"
 #include "rtt/SEGGER_RTT.h"
@@ -39,7 +47,11 @@ template <typename T> struct StaticStorage {
 // 所有大对象与运行时状态统一落在静态存储区（.bss），避免占用仅 1024 B
 // 的线程栈， 同时规避局部 static 触发未开启 -fno-threadsafe-statics 时的
 // __cxa_guard_* 风险与堆分配。
+#if GREENHOUSE_USE_FAKE_HARDWARE
+StaticStorage<greenhouse::FakeHardware> g_hardware_storage;
+#else
 StaticStorage<greenhouse::HardwareAdapter> g_hardware_storage;
+#endif
 StaticStorage<MessageSender> g_sender_storage;
 StaticStorage<greenhouse::MessageSenderSink> g_telemetry_sink_storage;
 StaticStorage<MessageSenderExceptionSink> g_exception_sink_storage;
@@ -48,27 +60,63 @@ StaticStorage<greenhouse::LogicController> g_controller_storage;
 StaticStorage<greenhouse::TelemetryReporter> g_reporter_storage;
 StaticStorage<greenhouse::GreenhouseControlLoop> g_control_loop_storage;
 
+void toFixedDec2(float value, const char **sign, unsigned *whole,
+                 unsigned *frac) {
+  const float scaled_f = value * 100.0F;
+  if (!((scaled_f > -2147483648.0F) && (scaled_f < 2147483648.0F))) {
+    *sign = "";
+    *whole = 0U;
+    *frac = 0U;
+    return;
+  }
+
+  const bool negative = (scaled_f < 0.0F);
+  const float abs_scaled = negative ? -scaled_f : scaled_f;
+  const unsigned total = static_cast<unsigned>(abs_scaled + 0.5F);
+  *sign = (negative && (total > 0U)) ? "-" : "";
+  *whole = total / 100U;
+  *frac = total % 100U;
+}
+
 void logStatusSummary(const uint32_t now_ms,
                       const greenhouse::ControllerSnapshot &snap) {
+  auto t_sign = "";
+  unsigned t_whole = 0U;
+  unsigned t_frac = 0U;
+  toFixedDec2(snap.temperature, &t_sign, &t_whole, &t_frac);
 
-  rtt_printf("[ctrl %u ms] T=%fC H=%f S=%f L=%u W=%u F%u L%u "
-             "H%u P%u A=%d err=0x%x\r\n",
-             static_cast<unsigned>(now_ms), snap.temperature, snap.air_humidity,
-             snap.soil_humidity, static_cast<unsigned>(snap.illuminance),
-             snap.has_enough_water ? 1U : 0U, snap.fan_on ? 1U : 0U,
-             snap.light_on ? 1U : 0U, snap.heater_on ? 1U : 0U,
-             snap.pump_on ? 1U : 0U, static_cast<int>(snap.turn_angle),
-             static_cast<unsigned>(snap.faults));
+  const char *h_sign = "";
+  unsigned h_whole = 0U;
+  unsigned h_frac = 0U;
+  toFixedDec2(snap.air_humidity, &h_sign, &h_whole, &h_frac);
+
+  const char *s_sign = "";
+  unsigned s_whole = 0U;
+  unsigned s_frac = 0U;
+  toFixedDec2(snap.soil_humidity, &s_sign, &s_whole, &s_frac);
+
+  // new_thread0 栈仅 1024 B：使用 SEGGER_RTT_printf（64 B 栈缓冲，仅整数格式化）
+  // 替代 rtt_printf("%f")（256 B 栈缓冲 + libc vsnprintf 浮点格式化），避免栈溢出。
+  SEGGER_RTT_printf(
+      0U,
+      "[ctrl %u ms] T=%s%u.%02uC H=%s%u.%02u S=%s%u.%02u L=%u W=%u F%u L%u "
+      "H%u P%u A=%d err=0x%x\r\n",
+      static_cast<unsigned>(now_ms), t_sign, t_whole, t_frac, h_sign, h_whole,
+      h_frac, s_sign, s_whole, s_frac, static_cast<unsigned>(snap.illuminance),
+      snap.has_enough_water ? 1U : 0U, snap.fan_on ? 1U : 0U,
+      snap.light_on ? 1U : 0U, snap.heater_on ? 1U : 0U,
+      snap.pump_on ? 1U : 0U, static_cast<int>(snap.turn_angle),
+      static_cast<unsigned>(snap.faults));
 }
 
 void logExceptionEdges(const uint32_t now_ms, const uint32_t rising_mask) {
   if (0U != (rising_mask & greenhouse::EXCEPTION_WATER_LACK)) {
-    rtt_printf("[ctrl %u ms] EXC: WATER_LACK\r\n",
-               static_cast<unsigned>(now_ms));
+    SEGGER_RTT_printf(0U, "[ctrl %u ms] EXC: WATER_LACK\r\n",
+                      static_cast<unsigned>(now_ms));
   }
   if (0U != (rising_mask & greenhouse::EXCEPTION_TURNTABLE_FAILED)) {
-    rtt_printf("[ctrl %u ms] EXC: TURNTABLE_FAILED\r\n",
-               static_cast<unsigned>(now_ms));
+    SEGGER_RTT_printf(0U, "[ctrl %u ms] EXC: TURNTABLE_FAILED\r\n",
+                      static_cast<unsigned>(now_ms));
   }
 }
 
@@ -80,12 +128,17 @@ void logExceptionEdges(const uint32_t now_ms, const uint32_t rising_mask) {
 void new_thread0_entry(void *pvParameters) {
   FSP_PARAMETER_NOT_USED(pvParameters);
 
+#if GREENHOUSE_USE_FAKE_HARDWARE
+  auto *const hardware = new (static_cast<void *>(g_hardware_storage.raw))
+      greenhouse::FakeHardware();
+#else
   // 必须在调度器运行后的线程上下文初始化外设（内部依赖 vTaskDelay
   // 与静态信号量）， 且 peripheral_init() 会将 5 路执行器置为安全关闭态。
   HardwareDataManager::peripheral_init();
 
   auto *const hardware = new (static_cast<void *>(g_hardware_storage.raw))
       greenhouse::HardwareAdapter();
+#endif
   auto *const sender =
       new (static_cast<void *>(g_sender_storage.raw)) MessageSender();
   auto *const telemetry_sink =

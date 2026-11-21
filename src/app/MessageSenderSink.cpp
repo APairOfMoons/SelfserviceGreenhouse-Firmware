@@ -13,10 +13,9 @@ MessageSenderSink::MessageSenderSink(MessageSender &sender)
 
 bool MessageSenderSink::publish(const MonitoringData &data)
 {
-    // uploadMonitoringData() 返回 void，无法感知链路是否就绪，
-    // 因此这里一律认为"已交给通信侧"；排队/丢帧策略由 MessageSender 内部处理。
-    sender_.uploadMonitoringData(data);
-    return true;
+    // BootSession 未就绪或上行队列满/未创建时返回 false，
+    // 让 TelemetryReporter 保留待发状态并在下一拍重试。
+    return sender_.uploadMonitoringData(data);
 }
 
 } // namespace greenhouse

@@ -8,6 +8,18 @@
 
 #include "AtChannel.h"
 #include "communication/domain/TextWriter.h"
+#include "communication/port/CommRtos.h"
+
+#ifndef GREENHOUSE_COMM_RTT_LOG
+#define GREENHOUSE_COMM_RTT_LOG 1
+#endif
+
+#if GREENHOUSE_COMM_RTT_LOG
+#include "rtt/SEGGER_RTT.h"
+#define MQTT_RTT_LOG(...) (void) SEGGER_RTT_printf(0U, __VA_ARGS__)
+#else
+#define MQTT_RTT_LOG(...) ((void) 0)
+#endif
 
 
 extern "C"
@@ -72,6 +84,38 @@ bool appendQuoted(TextWriter &writer, const char *text)
 }
 
 
+#if GREENHOUSE_COMM_RTT_LOG
+const char *failStepName(MqttFailStep step)
+{
+    switch (step)
+    {
+        case MqttFailStep::kNone:      return "NONE";
+        case MqttFailStep::kParam:     return "PARAM";
+        case MqttFailStep::kUserCfg:   return "USERCFG";
+        case MqttFailStep::kConnCfg:   return "CONNCFG";
+        case MqttFailStep::kConnect:   return "CONN";
+        case MqttFailStep::kSubscribe: return "SUB";
+        case MqttFailStep::kPublish:   return "PUB";
+        default:                       return "?";
+    }
+}
+
+
+const char *atStatusName(AtStatus status)
+{
+    switch (status)
+    {
+        case AtStatus::kOk:      return "OK";
+        case AtStatus::kError:   return "ERR";
+        case AtStatus::kFail:    return "FAIL";
+        case AtStatus::kPrompt:  return "PROMPT";
+        case AtStatus::kTimeout: return "TMO";
+        default:                 return "?";
+    }
+}
+#endif
+
+
 /* 把失败现场留下来：哪一步、模块怎么回的。 */
 void recordFailure(MqttFailStep step, AtStatus status, const char *line)
 {
@@ -81,10 +125,17 @@ void recordFailure(MqttFailStep step, AtStatus status, const char *line)
     if (line == nullptr)
     {
         g_mqttFailLine[0] = '\0';
-        return;
+    }
+    else
+    {
+        std::memcpy(g_mqttFailLine, line, std::strlen(line) + 1U);
     }
 
-    std::memcpy(g_mqttFailLine, line, std::strlen(line) + 1U);
+    MQTT_RTT_LOG("[mqtt %u] fail %s st=%s ln=%s\r\n",
+                 static_cast<unsigned>(commRtosUptimeMs()),
+                 failStepName(step),
+                 atStatusName(status),
+                 (line != nullptr) ? line : "");
 }
 
 } // namespace
@@ -268,42 +319,70 @@ bool EspAtMqtt::publish(const char *topic,
         return false;
     }
 
+    char line[AT_LINE_MAX];
+    line[0] = '\0';
+
     const AtResult result = AtChannel::execute(writer.data(), timeoutMs);
     if (result.status == AtStatus::kOk)
     {
         /* 个别固件版本先回 OK 再给 '>'，两种顺序都要能走 */
-        if (!AtChannel::waitForPrefix(">", timeoutMs, nullptr, 0U))
+        if (!AtChannel::waitForPrefix(">", timeoutMs, line, sizeof(line)))
         {
             /* 没进数据模式就等于什么都没发，通道仍然是同步的 */
-            recordFailure(MqttFailStep::kPublish, AtStatus::kTimeout, ">");
+            const bool hasErrorLine = (line[0] != '\0');
+            MQTT_RTT_LOG("[mqtt %u] pub wait> fail t=%s l=%u\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()),
+                         topic,
+                         static_cast<unsigned>(length));
+            recordFailure(MqttFailStep::kPublish,
+                          hasErrorLine ? AtStatus::kError : AtStatus::kTimeout,
+                          hasErrorLine ? line : ">");
             return false;
         }
     }
     else if (result.status != AtStatus::kPrompt)
     {
+        MQTT_RTT_LOG("[mqtt %u] pub exec fail t=%s l=%u\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()),
+                     topic,
+                     static_cast<unsigned>(length));
         recordFailure(MqttFailStep::kPublish, result.status, result.line);
         return false;
     }
 
     if (!AtChannel::sendRaw(payload, length, kRawWriteTimeoutMs))
     {
+        MQTT_RTT_LOG("[mqtt %u] pub sendRaw fail l=%u\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()),
+                     static_cast<unsigned>(length));
         recordFailure(MqttFailStep::kPublish, AtStatus::kTimeout, "RAWDATA");
         return false;
     }
 
-    char line[AT_LINE_MAX];
+    line[0] = '\0';
     if (!AtChannel::waitForPrefix("+MQTTPUB:", timeoutMs, line, sizeof(line)))
     {
         /*
          * 载荷已经整帧发出去了（BspUart 一次提交整段，不会只发一半），
          * 所以模块那边不会卡在数据模式；这里丢掉的是"是否被接受"的确认。
          */
-        recordFailure(MqttFailStep::kPublish, AtStatus::kTimeout, "+MQTTPUB:");
+        const bool hasErrorLine = (line[0] != '\0');
+        MQTT_RTT_LOG("[mqtt %u] pub waitAck fail t=%s l=%u\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()),
+                     topic,
+                     static_cast<unsigned>(length));
+        recordFailure(MqttFailStep::kPublish,
+                      hasErrorLine ? AtStatus::kError : AtStatus::kTimeout,
+                      hasErrorLine ? line : "+MQTTPUB:");
         return false;
     }
 
     if (std::strcmp(line, "+MQTTPUB:OK") != 0)
     {
+        MQTT_RTT_LOG("[mqtt %u] pub ack=%s t=%s\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()),
+                     line,
+                     topic);
         recordFailure(MqttFailStep::kPublish, AtStatus::kError, line);
         return false;
     }

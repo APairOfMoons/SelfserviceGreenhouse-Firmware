@@ -18,6 +18,17 @@
 #include "configuration/CommConfiguration.h"
 #include "configuration/LogicalConfiguration.h"
 
+#ifndef GREENHOUSE_COMM_RTT_LOG
+#define GREENHOUSE_COMM_RTT_LOG 1
+#endif
+
+#if GREENHOUSE_COMM_RTT_LOG
+#include "rtt/SEGGER_RTT.h"
+#define COMM_RTT_LOG(...) (void) SEGGER_RTT_printf(0U, __VA_ARGS__)
+#else
+#define COMM_RTT_LOG(...) ((void) 0)
+#endif
+
 
 /*
  * 调试器可见的诊断量。
@@ -50,6 +61,7 @@ constexpr uint32_t kBootSettleMs = 500U;
 
 constexpr uint32_t kJoinTimeoutMs = 15000U;
 constexpr uint32_t kConnectTimeoutMs = 60000U;
+constexpr uint32_t kSubscribeTimeoutMs = 15000U;
 constexpr uint32_t kPublishTimeoutMs = 20000U;
 constexpr uint32_t kRetryDelayMs = 200U;
 constexpr uint32_t kFaultHoldMs = 5000U;
@@ -83,6 +95,23 @@ uint32_t s_publishFailures = 0U;
 /* 拼 topic 与 ack 用的缓冲。单任务独占，放静态区省栈。 */
 char s_topic[64];
 char s_ack[96];
+
+#if GREENHOUSE_COMM_RTT_LOG
+const char *stateName(CommunicationService::State state)
+{
+    switch (state)
+    {
+        case CommunicationService::State::kBooting:        return "BOOT";
+        case CommunicationService::State::kModuleReady:    return "MOD";
+        case CommunicationService::State::kWifiReady:      return "WIFI";
+        case CommunicationService::State::kMqttConnecting: return "CONN";
+        case CommunicationService::State::kOnline:         return "ONLN";
+        case CommunicationService::State::kReconnecting:   return "RECN";
+        case CommunicationService::State::kFault:          return "FALT";
+        default:                                           return "?";
+    }
+}
+#endif
 
 
 bool publishPayload(const char *topic,
@@ -210,6 +239,13 @@ void stepMqttConnecting()
         return;
     }
 
+    /*
+     * 丢掉建连前遗留的 URC（例如 CWJAP 留下的 WIFI CONNECTED/GOT IP，以及
+     * 上面 AT+MQTTCLEAN=0 关闭旧会话时模块吐出的 +MQTTDISCONNECTED），避免
+     * 它们带进 stepOnline() 误判为新会话刚上线就断线。
+     */
+    AtChannel::clearUrcs();
+
     if (EspAtMqtt::connect(COMM_CONFIGURATION.BROKER_HOST,
                            static_cast<uint16_t>(COMM_CONFIGURATION.BROKER_PORT),
                            kConnectTimeoutMs))
@@ -260,7 +296,12 @@ bool enterOnline()
         return false;
     }
 
-    if (!publishPayload(s_topic, payload, static_cast<uint32_t>(writer.length()), 1U, true))
+    const bool statusOk = publishPayload(s_topic, payload, static_cast<uint32_t>(writer.length()), 1U, true);
+    COMM_RTT_LOG("[comm %u] status pub %s len=%u\r\n",
+                 static_cast<unsigned>(commRtosUptimeMs()),
+                 statusOk ? "ok" : "fail",
+                 static_cast<unsigned>(writer.length()));
+    if (!statusOk)
     {
         return false;
     }
@@ -272,9 +313,20 @@ bool enterOnline()
 
     /*
      * 每次上线都重订阅一遍，这样 broker 是否保留会话都不影响配置通道。
-     * 订阅失败不影响上报，记下来即可，下次上线再试。
+     * SUB 是网络往返（等 SUBACK），必须给足网络超时；若发生超时，模块可能
+     * 仍在处理 SUB（随后发 PUBRAW 会触发 busy p... 错位），直接退回重连。
+     * 若模块明确回绝但连接仍健在，则不影响上行遥测。
      */
-    (void) EspAtMqtt::subscribe(s_topic, COMM_CONFIGURATION.AT_TIMEOUT_MS);
+    const bool subOk = EspAtMqtt::subscribe(s_topic, kSubscribeTimeoutMs);
+    (void) subOk;
+    COMM_RTT_LOG("[comm %u] cfg sub %s\r\n",
+                 static_cast<unsigned>(commRtosUptimeMs()),
+                 subOk ? "ok" : "fail");
+
+    if (!subOk && (g_mqttFailStatus == static_cast<uint8_t>(AtStatus::kTimeout)))
+    {
+        return false;
+    }
 
     return true;
 }
@@ -341,13 +393,24 @@ bool handleUrc(const AtUrc &urc)
     {
         case AtEvent::kMqttSubReceive:
         {
+            COMM_RTT_LOG("[comm %u] urc sub len=%u\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()),
+                         static_cast<unsigned>(urc.length));
             handleConfig(urc);
             return true;
         }
 
         case AtEvent::kMqttDisconnected:
+        {
+            COMM_RTT_LOG("[comm %u] urc mqtt disc\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()));
+            return false;
+        }
+
         case AtEvent::kWifiDisconnected:
         {
+            COMM_RTT_LOG("[comm %u] urc wifi disc\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()));
             return false;
         }
 
@@ -363,6 +426,8 @@ void stepOnline()
 {
     if (!enterOnline())
     {
+        COMM_RTT_LOG("[comm %u] exit online: enter fail\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()));
         s_state = CommunicationService::State::kReconnecting;
         return;
     }
@@ -377,6 +442,8 @@ void stepOnline()
         {
             if (!handleUrc(urc))
             {
+                COMM_RTT_LOG("[comm %u] exit online: urc disc\r\n",
+                             static_cast<unsigned>(commRtosUptimeMs()));
                 s_state = CommunicationService::State::kReconnecting;
                 return;
             }
@@ -385,11 +452,12 @@ void stepOnline()
         CommunicationService::OutgoingMessage message;
         while (commRtosQueueReceive(s_queue, &message, 0U))
         {
-            if (publishPayload(message.topic,
-                               message.payload,
-                               message.length,
-                               message.qos,
-                               message.retain))
+            const bool pubOk = publishPayload(message.topic,
+                                              message.payload,
+                                              message.length,
+                                              message.qos,
+                                              message.retain);
+            if (pubOk)
             {
                 ++g_commSent;
                 s_publishFailures = 0U;
@@ -398,11 +466,43 @@ void stepOnline()
             {
                 ++g_commFailed;
                 ++s_publishFailures;
+            }
 
-                if (s_publishFailures >= kPublishFailuresBeforeReconnect)
+            COMM_RTT_LOG("[comm %u] pub %s l=%u %s s=%u f=%u d=%u\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()),
+                         message.topic,
+                         static_cast<unsigned>(message.length),
+                         pubOk ? "ok" : "fail",
+                         static_cast<unsigned>(g_commSent),
+                         static_cast<unsigned>(g_commFailed),
+                         static_cast<unsigned>(g_commDropped));
+
+            if (s_publishFailures >= kPublishFailuresBeforeReconnect)
+            {
+                COMM_RTT_LOG("[comm %u] exit online: pub fail=%u\r\n",
+                             static_cast<unsigned>(commRtosUptimeMs()),
+                             static_cast<unsigned>(s_publishFailures));
+                s_state = CommunicationService::State::kReconnecting;
+                return;
+            }
+
+            if (!pubOk)
+            {
+                /*
+                 * 发布失败时立刻收一次串口并检查 URC：如果底层已经收到
+                 * +MQTTDISCONNECTED / WIFI DISCONNECT，马上退出在线态，
+                 * 避免继续消耗队列再做无谓的失败重试。
+                 */
+                AtChannel::pump(10U);
+                while (AtChannel::pollUrc(&urc))
                 {
-                    s_state = CommunicationService::State::kReconnecting;
-                    return;
+                    if (!handleUrc(urc))
+                    {
+                        COMM_RTT_LOG("[comm %u] exit online: pub urc disc\r\n",
+                                     static_cast<unsigned>(commRtosUptimeMs()));
+                        s_state = CommunicationService::State::kReconnecting;
+                        return;
+                    }
                 }
             }
         }
@@ -459,6 +559,8 @@ bool CommunicationService::initialize()
     if (!AtChannel::initialize())
     {
         g_commInit = 2U;
+        COMM_RTT_LOG("[comm %u] init fail (uart)\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()));
         return false;
     }
 
@@ -466,11 +568,25 @@ bool CommunicationService::initialize()
     if (s_queue == nullptr)
     {
         g_commInit = 2U;
+        COMM_RTT_LOG("[comm %u] init fail (queue)\r\n",
+                     static_cast<unsigned>(commRtosUptimeMs()));
         return false;
     }
 
     s_initialized = true;
     g_commInit = 1U;
+
+#if GREENHOUSE_COMM_RTT_LOG
+    char nonceHex[9];
+    if (!BootSession::format(nonceHex, sizeof(nonceHex)))
+    {
+        nonceHex[0] = '?';
+        nonceHex[1] = '\0';
+    }
+    COMM_RTT_LOG("[comm %u] init ok b=%s\r\n",
+                 static_cast<unsigned>(commRtosUptimeMs()),
+                 nonceHex);
+#endif
     return true;
 }
 
@@ -489,12 +605,17 @@ void CommunicationService::run()
         }
     }
 
+    COMM_RTT_LOG("[comm %u] state=%s\r\n",
+                 static_cast<unsigned>(commRtosUptimeMs()),
+                 stateName(s_state));
+
     for (;;)
     {
         /* 状态镜像给调试器看。stepOnline 内部不返回，所以在分派前同步就够了。 */
-        g_commState = static_cast<uint8_t>(s_state);
+        const State prevState = s_state;
+        g_commState = static_cast<uint8_t>(prevState);
 
-        switch (s_state)
+        switch (prevState)
         {
             case State::kBooting:
             {
@@ -537,6 +658,15 @@ void CommunicationService::run()
                 stepFault();
                 break;
             }
+        }
+
+        const State nextState = s_state;
+        if (nextState != prevState)
+        {
+            COMM_RTT_LOG("[comm %u] %s -> %s\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()),
+                         stateName(prevState),
+                         stateName(nextState));
         }
     }
 }

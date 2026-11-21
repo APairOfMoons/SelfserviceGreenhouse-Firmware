@@ -14,6 +14,14 @@
 #include "communication/port/CommRtos.h"
 #include "configuration/CommConfiguration.h"
 
+#ifndef GREENHOUSE_COMM_RTT_LOG
+#define GREENHOUSE_COMM_RTT_LOG 1
+#endif
+
+#if GREENHOUSE_COMM_RTT_LOG
+#include "rtt/SEGGER_RTT.h"
+#endif
+
 
 namespace
 {
@@ -32,21 +40,20 @@ char s_payload[224];
 CommunicationService::OutgoingMessage s_message;
 
 /* 把 s_payload 里已编码好的内容装进 s_message 并交给通信线程 */
-void submitCurrent(const std::size_t length, bool retain)
+bool submitCurrent(const std::size_t length, bool retain)
 {
     std::memcpy(s_message.payload, s_payload, length);
     s_message.length = static_cast<uint16_t>(length);
     s_message.qos = 1U;
     s_message.retain = retain;
 
-    /* 队列满时丢帧，逻辑侧拿不到失败信号，计数留在通信侧 */
-    (void) CommunicationService::submit(s_message);
+    return CommunicationService::submit(s_message);
 }
 
 } // namespace
 
 
-void MessageSender::uploadMonitoringData(MonitoringData monitoringData)
+bool MessageSender::uploadMonitoringData(MonitoringData monitoringData)
 {
     const std::size_t length = TelemetryPayload::build(monitoringData,
                                                        s_sequence,
@@ -56,19 +63,39 @@ void MessageSender::uploadMonitoringData(MonitoringData monitoringData)
                                                        sizeof(s_payload));
     if (length == 0U)
     {
-        return;
+#if GREENHOUSE_COMM_RTT_LOG
+        SEGGER_RTT_printf(0U,
+                          "[msg] telemetry build=0 nonce=0x%x\r\n",
+                          static_cast<unsigned>(BootSession::nonce()));
+#endif
+        return false;
     }
-
-    ++s_sequence;
 
     if (!TopicBuilder::telemetryTopic(s_message.topic,
                                       sizeof(s_message.topic),
                                       COMM_CONFIGURATION.DEVICE_ID))
     {
-        return;
+#if GREENHOUSE_COMM_RTT_LOG
+        SEGGER_RTT_printf(0U, "[msg] telemetry topic fail\r\n");
+#endif
+        return false;
     }
 
-    submitCurrent(length, false);
+    const bool submitted = submitCurrent(length, false);
+#if GREENHOUSE_COMM_RTT_LOG
+    SEGGER_RTT_printf(0U,
+                      "[msg] telemetry seq=%u len=%u submit=%s\r\n",
+                      static_cast<unsigned>(s_sequence),
+                      static_cast<unsigned>(length),
+                      submitted ? "ok" : "drop");
+#endif
+    if (!submitted)
+    {
+        return false;
+    }
+
+    ++s_sequence;
+    return true;
 }
 
 
@@ -93,5 +120,5 @@ void MessageSender::throwGreenhouseException(GreenhouseException exception)
     }
 
     /* 告警 retain：客户端重连后能直接看到当前有哪些告警 */
-    submitCurrent(length, true);
+    (void) submitCurrent(length, true);
 }

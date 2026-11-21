@@ -131,10 +131,13 @@ class AtChannel
      */
     static bool pump(uint32_t timeoutMs);
 
+    /** 清空待处理 URC 队列。重连建立新会话前调用，避免旧断线事件污染新会话。 */
+    static void clearUrcs();
+
     /** 取出一条待处理 URC。没有则返回 false。 */
     static bool pollUrc(AtUrc *out);
 
-    /** 因槽被占用而覆盖掉的 URC 数。非 0 说明上层轮询得太慢。 */
+    /** 因队列满而覆盖掉的 URC 数。非 0 说明上层轮询得太慢。 */
     static uint32_t droppedUrcCount();
 };
 

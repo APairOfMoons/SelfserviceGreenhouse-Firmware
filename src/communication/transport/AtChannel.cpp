@@ -9,6 +9,17 @@
 #include "communication/port/BspUart.h"
 #include "communication/port/CommRtos.h"
 
+#ifndef GREENHOUSE_COMM_RTT_LOG
+#define GREENHOUSE_COMM_RTT_LOG 1
+#endif
+
+#if GREENHOUSE_COMM_RTT_LOG
+#include "rtt/SEGGER_RTT.h"
+#define AT_RTT_LOG(...) (void) SEGGER_RTT_printf(0U, __VA_ARGS__)
+#else
+#define AT_RTT_LOG(...) ((void) 0)
+#endif
+
 
 /*
  * 调试器可见的 AT 诊断。
@@ -45,12 +56,19 @@ constexpr uint32_t kSubReceivePrefixLength = 13U;
 char s_commandBuffer[AT_COMMAND_MAX];
 
 /*
- * URC 只有一格。配置下发间隔以分钟计，一格足够；被覆盖的计入 dropped，
- * 非 0 说明上层轮询得太慢。
+ * URC 环形队列。连接热点与 broker 时会连续收到 WIFI CONNECTED、WIFI GOT IP、
+ * +MQTTCONNECTED，单格槽会把后面的挤丢（导致 waitForEvent 等不到）。8 格足够
+ * 容纳连接期突发的 URC 与下行配置报文。
  */
-AtUrc s_urcSlot;
-bool s_urcPending = false;
+constexpr uint32_t kUrcQueueCapacity = 8U;
+
+AtUrc s_urcQueue[kUrcQueueCapacity];
+uint32_t s_urcHead = 0U;
+uint32_t s_urcCount = 0U;
 uint32_t s_urcDropped = 0U;
+
+/* 检测到裸 `>` 提示符后，某些 ESP-AT 固件会跟一个空格 `> `；下一轮忽略这一个前导空格。 */
+bool s_skipLeadingSpace = false;
 
 /* readRecord 解析 +MQTTSUBRECV 时的暂存区，随后立刻搬进 URC 槽 */
 char s_subReceiveTopic[AT_TOPIC_MAX];
@@ -222,6 +240,15 @@ bool readRecord(char *buffer, uint32_t timeoutMs, bool *isSubReceive)
             return false;
         }
 
+        if (s_skipLeadingSpace)
+        {
+            s_skipLeadingSpace = false;
+            if ((length == 0U) && (byte == ' '))
+            {
+                continue;
+            }
+        }
+
         if (byte == '\n')
         {
             if ((length > 0U) && (buffer[length - 1U] == '\r'))
@@ -229,6 +256,20 @@ bool readRecord(char *buffer, uint32_t timeoutMs, bool *isSubReceive)
                 --length;
             }
             buffer[length] = '\0';
+            return true;
+        }
+
+        /*
+         * AT+MQTTPUBRAW 等数据发送提示符 `>` 不带行结束符 `\n`；
+         * 仅在行首（或仅前置了一个 `\r`）出现 `>` 时按独立提示符返回，
+         * 避免把普通文本或 +MQTTSUBRECV 里的 `>` 误判成提示符。
+         */
+        if ((byte == '>') &&
+            ((length == 0U) || ((length == 1U) && (buffer[0] == '\r'))))
+        {
+            buffer[0] = '>';
+            buffer[1] = '\0';
+            s_skipLeadingSpace = true;
             return true;
         }
 
@@ -322,34 +363,114 @@ LineClass classify(const char *line, AtEvent *event)
 }
 
 
-void storeUrc(AtEvent event)
+void copyLine(char *lineOut, uint32_t capacity, const char *line)
 {
-    if (s_urcPending)
+    if ((lineOut == nullptr) || (capacity == 0U) || (line == nullptr))
     {
-        ++s_urcDropped;
         return;
     }
 
-    s_urcSlot.event = event;
-    s_urcSlot.topic[0] = '\0';
-    s_urcSlot.length = 0U;
-    s_urcPending = true;
+    const std::size_t copyLength = std::strlen(line);
+    const std::size_t limit = (copyLength < (capacity - 1U))
+                                  ? copyLength
+                                  : (capacity - 1U);
+    std::memcpy(lineOut, line, limit);
+    lineOut[limit] = '\0';
+}
+
+
+AtUrc *allocateUrcSlot()
+{
+    if (s_urcCount >= kUrcQueueCapacity)
+    {
+        /* 队列满时覆盖最旧的一条，防止陈旧 URC 堵死后续连接事件 */
+        s_urcHead = (s_urcHead + 1U) % kUrcQueueCapacity;
+        --s_urcCount;
+        ++s_urcDropped;
+        AT_RTT_LOG("[at %u] urc drop=%u\r\n",
+                   static_cast<unsigned>(commRtosUptimeMs()),
+                   static_cast<unsigned>(s_urcDropped));
+    }
+
+    const uint32_t tail = (s_urcHead + s_urcCount) % kUrcQueueCapacity;
+    ++s_urcCount;
+    return &s_urcQueue[tail];
+}
+
+
+#if GREENHOUSE_COMM_RTT_LOG
+const char *urcEventName(AtEvent event)
+{
+    switch (event)
+    {
+        case AtEvent::kMqttConnected:    return "MQTT_CONN";
+        case AtEvent::kMqttDisconnected: return "MQTT_DISC";
+        case AtEvent::kMqttSubReceive:   return "MQTT_SUB";
+        case AtEvent::kWifiConnected:    return "WIFI_CONN";
+        case AtEvent::kWifiGotIp:        return "WIFI_IP";
+        case AtEvent::kWifiDisconnected: return "WIFI_DISC";
+        default:                         return "?";
+    }
+}
+#endif
+
+
+void storeUrc(AtEvent event)
+{
+    AtUrc *slot = allocateUrcSlot();
+    slot->event = event;
+    slot->topic[0] = '\0';
+    slot->length = 0U;
+
+    if ((event == AtEvent::kMqttDisconnected) || (event == AtEvent::kWifiDisconnected))
+    {
+        AT_RTT_LOG("[at %u] urc=%s q=%u\r\n",
+                   static_cast<unsigned>(commRtosUptimeMs()),
+                   urcEventName(event),
+                   static_cast<unsigned>(s_urcCount));
+    }
 }
 
 
 void storeSubReceiveUrc()
 {
-    if (s_urcPending)
+    AtUrc *slot = allocateUrcSlot();
+    slot->event = AtEvent::kMqttSubReceive;
+    std::memcpy(slot->topic, s_subReceiveTopic, AT_TOPIC_MAX);
+    slot->length = static_cast<uint16_t>(s_subReceiveLength);
+    std::memcpy(slot->payload, s_subReceivePayload, s_subReceiveLength);
+}
+
+
+bool takeQueuedEvent(AtEvent event)
+{
+    for (uint32_t offset = 0U; offset < s_urcCount; ++offset)
     {
-        ++s_urcDropped;
-        return;
+        const uint32_t index = (s_urcHead + offset) % kUrcQueueCapacity;
+        if (s_urcQueue[index].event != event)
+        {
+            continue;
+        }
+
+        if (offset == 0U)
+        {
+            s_urcHead = (s_urcHead + 1U) % kUrcQueueCapacity;
+            --s_urcCount;
+            return true;
+        }
+
+        for (uint32_t move = offset; (move + 1U) < s_urcCount; ++move)
+        {
+            const uint32_t dst = (s_urcHead + move) % kUrcQueueCapacity;
+            const uint32_t src = (s_urcHead + move + 1U) % kUrcQueueCapacity;
+            s_urcQueue[dst] = s_urcQueue[src];
+        }
+
+        --s_urcCount;
+        return true;
     }
 
-    s_urcSlot.event = AtEvent::kMqttSubReceive;
-    std::memcpy(s_urcSlot.topic, s_subReceiveTopic, AT_TOPIC_MAX);
-    s_urcSlot.length = static_cast<uint16_t>(s_subReceiveLength);
-    std::memcpy(s_urcSlot.payload, s_subReceivePayload, s_subReceiveLength);
-    s_urcPending = true;
+    return false;
 }
 
 
@@ -400,6 +521,8 @@ bool sendCommand(const char *command)
         return false;
     }
 
+    s_skipLeadingSpace = false;
+
     std::memcpy(s_commandBuffer, command, length);
     s_commandBuffer[length] = '\r';
     s_commandBuffer[length + 1U] = '\n';
@@ -414,9 +537,11 @@ bool sendCommand(const char *command)
 
 bool AtChannel::initialize()
 {
-    s_urcPending = false;
+    s_urcHead = 0U;
+    s_urcCount = 0U;
     s_urcDropped = 0U;
     s_subReceiveLength = 0U;
+    s_skipLeadingSpace = false;
 
     return BspUart::initialize();
 }
@@ -425,8 +550,17 @@ bool AtChannel::initialize()
 void AtChannel::reset()
 {
     BspUart::flushReceive();
-    s_urcPending = false;
+    s_urcHead = 0U;
+    s_urcCount = 0U;
     s_subReceiveLength = 0U;
+    s_skipLeadingSpace = false;
+}
+
+
+void AtChannel::clearUrcs()
+{
+    s_urcHead = 0U;
+    s_urcCount = 0U;
 }
 
 
@@ -519,6 +653,15 @@ AtResult AtChannel::execute(const char *command, uint32_t timeoutMs)
 
     recordAt(command, result.status, result.line);
 
+    if ((result.status != AtStatus::kOk) && (result.status != AtStatus::kPrompt))
+    {
+        AT_RTT_LOG("[at %u] cmd=%s st=%u ln=%s\r\n",
+                   static_cast<unsigned>(commRtosUptimeMs()),
+                   (command != nullptr) ? command : "",
+                   static_cast<unsigned>(result.status),
+                   result.line);
+    }
+
     return result;
 }
 
@@ -592,16 +735,7 @@ static bool executeAndWaitInternal(const char *command,
                 if ((!matched) && (std::strncmp(line, prefix, prefixLength) == 0))
                 {
                     matched = true;
-
-                    if ((lineOut != nullptr) && (capacity > 0U))
-                    {
-                        const std::size_t copyLength = std::strlen(line);
-                        const std::size_t limit = (copyLength < (capacity - 1U))
-                                                      ? copyLength
-                                                      : (capacity - 1U);
-                        std::memcpy(lineOut, line, limit);
-                        lineOut[limit] = '\0';
-                    }
+                    copyLine(lineOut, capacity, line);
                 }
                 break;
             }
@@ -640,12 +774,18 @@ bool AtChannel::waitForPrefix(const char *prefix,
         const uint32_t elapsed = commRtosUptimeMs() - start;
         if (elapsed >= timeoutMs)
         {
+            AT_RTT_LOG("[at %u] wait(%s) tmo\r\n",
+                       static_cast<unsigned>(commRtosUptimeMs()),
+                       prefix);
             return false;
         }
 
         bool isSubReceive = false;
         if (!readRecord(line, timeoutMs - elapsed, &isSubReceive))
         {
+            AT_RTT_LOG("[at %u] wait(%s) rd tmo\r\n",
+                       static_cast<unsigned>(commRtosUptimeMs()),
+                       prefix);
             return false;
         }
 
@@ -662,22 +802,25 @@ bool AtChannel::waitForPrefix(const char *prefix,
 
         if (std::strncmp(line, prefix, prefixLength) == 0)
         {
-            if ((lineOut != nullptr) && (capacity > 0U))
-            {
-                const std::size_t copyLength = std::strlen(line);
-                const std::size_t limit = (copyLength < (capacity - 1U))
-                                              ? copyLength
-                                              : (capacity - 1U);
-                std::memcpy(lineOut, line, limit);
-                lineOut[limit] = '\0';
-            }
+            copyLine(lineOut, capacity, line);
             return true;
         }
 
         AtEvent event = AtEvent::kMqttConnected;
-        if (classify(line, &event) == LineClass::kUrc)
+        const LineClass lineClass = classify(line, &event);
+        if (lineClass == LineClass::kUrc)
         {
             storeUrc(event);
+        }
+        else if ((lineClass == LineClass::kError) || (lineClass == LineClass::kFail))
+        {
+            /* 命令或数据发送被模块拒绝，立即失败而不是等到超时 */
+            AT_RTT_LOG("[at %u] wait(%s) err=%s\r\n",
+                       static_cast<unsigned>(commRtosUptimeMs()),
+                       prefix,
+                       line);
+            copyLine(lineOut, capacity, line);
+            return false;
         }
     }
 }
@@ -685,9 +828,8 @@ bool AtChannel::waitForPrefix(const char *prefix,
 
 bool AtChannel::waitForEvent(AtEvent event, uint32_t timeoutMs)
 {
-    if (s_urcPending && (s_urcSlot.event == event))
+    if (takeQueuedEvent(event))
     {
-        s_urcPending = false;
         return true;
     }
 
@@ -778,13 +920,14 @@ bool AtChannel::pump(uint32_t timeoutMs)
 
 bool AtChannel::pollUrc(AtUrc *out)
 {
-    if (!s_urcPending || (out == nullptr))
+    if ((s_urcCount == 0U) || (out == nullptr))
     {
         return false;
     }
 
-    *out = s_urcSlot;
-    s_urcPending = false;
+    *out = s_urcQueue[s_urcHead];
+    s_urcHead = (s_urcHead + 1U) % kUrcQueueCapacity;
+    --s_urcCount;
     return true;
 }
 
