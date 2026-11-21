@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
+#include "configuration/RtcClock.h"
+
 
 /**
  * Wi-Fi 相关的 AT 命令。
@@ -39,6 +41,15 @@ class EspAtWifi
      * STATUS:2（已获 IP）或 3（已建立 TCP）都算就绪；0/1/4/5 不算。
      */
     static bool isNetworkReady(uint32_t timeoutMs);
+
+    /** AT+CIPSNTPCFG，启用并配置 SNTP 时区与可选服务器。 */
+    static bool configureSntp(int8_t timezoneHours,
+                              const char *server1,
+                              const char *server2,
+                              uint32_t timeoutMs);
+
+    /** AT+CIPSNTPTIME?，查询当前 SNTP 日历时间并校验是否已同步。 */
+    static bool querySntpTime(RtcDateTime *outDateTime, uint32_t timeoutMs);
 
     /** AT+RST，硬复位模块。 */
     static bool reset(uint32_t timeoutMs);

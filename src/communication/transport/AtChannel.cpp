@@ -14,6 +14,7 @@
 #endif
 
 #if GREENHOUSE_COMM_RTT_LOG
+#include "configuration/RtcClock.h"
 #include "rtt/SEGGER_RTT.h"
 #define AT_RTT_LOG(...) (void) SEGGER_RTT_printf(0U, __VA_ARGS__)
 #else
@@ -387,8 +388,8 @@ AtUrc *allocateUrcSlot()
         s_urcHead = (s_urcHead + 1U) % kUrcQueueCapacity;
         --s_urcCount;
         ++s_urcDropped;
-        AT_RTT_LOG("[at %u] urc drop=%u\r\n",
-                   static_cast<unsigned>(commRtosUptimeMs()),
+        AT_RTT_LOG("[at %s] urc drop=%u\r\n",
+                   RtcClock::logTime(commRtosUptimeMs()).text,
                    static_cast<unsigned>(s_urcDropped));
     }
 
@@ -424,8 +425,8 @@ void storeUrc(AtEvent event)
 
     if ((event == AtEvent::kMqttDisconnected) || (event == AtEvent::kWifiDisconnected))
     {
-        AT_RTT_LOG("[at %u] urc=%s q=%u\r\n",
-                   static_cast<unsigned>(commRtosUptimeMs()),
+        AT_RTT_LOG("[at %s] urc=%s q=%u\r\n",
+                   RtcClock::logTime(commRtosUptimeMs()).text,
                    urcEventName(event),
                    static_cast<unsigned>(s_urcCount));
     }
@@ -655,8 +656,8 @@ AtResult AtChannel::execute(const char *command, uint32_t timeoutMs)
 
     if ((result.status != AtStatus::kOk) && (result.status != AtStatus::kPrompt))
     {
-        AT_RTT_LOG("[at %u] cmd=%s st=%u ln=%s\r\n",
-                   static_cast<unsigned>(commRtosUptimeMs()),
+        AT_RTT_LOG("[at %s] cmd=%s st=%u ln=%s\r\n",
+                   RtcClock::logTime(commRtosUptimeMs()).text,
                    (command != nullptr) ? command : "",
                    static_cast<unsigned>(result.status),
                    result.line);
@@ -774,8 +775,8 @@ bool AtChannel::waitForPrefix(const char *prefix,
         const uint32_t elapsed = commRtosUptimeMs() - start;
         if (elapsed >= timeoutMs)
         {
-            AT_RTT_LOG("[at %u] wait(%s) tmo\r\n",
-                       static_cast<unsigned>(commRtosUptimeMs()),
+            AT_RTT_LOG("[at %s] wait(%s) tmo\r\n",
+                       RtcClock::logTime(commRtosUptimeMs()).text,
                        prefix);
             return false;
         }
@@ -783,8 +784,8 @@ bool AtChannel::waitForPrefix(const char *prefix,
         bool isSubReceive = false;
         if (!readRecord(line, timeoutMs - elapsed, &isSubReceive))
         {
-            AT_RTT_LOG("[at %u] wait(%s) rd tmo\r\n",
-                       static_cast<unsigned>(commRtosUptimeMs()),
+            AT_RTT_LOG("[at %s] wait(%s) rd tmo\r\n",
+                       RtcClock::logTime(commRtosUptimeMs()).text,
                        prefix);
             return false;
         }
@@ -815,8 +816,8 @@ bool AtChannel::waitForPrefix(const char *prefix,
         else if ((lineClass == LineClass::kError) || (lineClass == LineClass::kFail))
         {
             /* 命令或数据发送被模块拒绝，立即失败而不是等到超时 */
-            AT_RTT_LOG("[at %u] wait(%s) err=%s\r\n",
-                       static_cast<unsigned>(commRtosUptimeMs()),
+            AT_RTT_LOG("[at %s] wait(%s) err=%s\r\n",
+                       RtcClock::logTime(commRtosUptimeMs()).text,
                        prefix,
                        line);
             copyLine(lineOut, capacity, line);

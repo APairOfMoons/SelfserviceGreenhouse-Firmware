@@ -15,6 +15,7 @@
 #endif
 
 #if GREENHOUSE_COMM_RTT_LOG
+#include "configuration/RtcClock.h"
 #include "rtt/SEGGER_RTT.h"
 #define MQTT_RTT_LOG(...) (void) SEGGER_RTT_printf(0U, __VA_ARGS__)
 #else
@@ -131,8 +132,8 @@ void recordFailure(MqttFailStep step, AtStatus status, const char *line)
         std::memcpy(g_mqttFailLine, line, std::strlen(line) + 1U);
     }
 
-    MQTT_RTT_LOG("[mqtt %u] fail %s st=%s ln=%s\r\n",
-                 static_cast<unsigned>(commRtosUptimeMs()),
+    MQTT_RTT_LOG("[mqtt %s] fail %s st=%s ln=%s\r\n",
+                 RtcClock::logTime(commRtosUptimeMs()).text,
                  failStepName(step),
                  atStatusName(status),
                  (line != nullptr) ? line : "");
@@ -330,8 +331,8 @@ bool EspAtMqtt::publish(const char *topic,
         {
             /* 没进数据模式就等于什么都没发，通道仍然是同步的 */
             const bool hasErrorLine = (line[0] != '\0');
-            MQTT_RTT_LOG("[mqtt %u] pub wait> fail t=%s l=%u\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()),
+            MQTT_RTT_LOG("[mqtt %s] pub wait> fail t=%s l=%u\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text,
                          topic,
                          static_cast<unsigned>(length));
             recordFailure(MqttFailStep::kPublish,
@@ -342,8 +343,8 @@ bool EspAtMqtt::publish(const char *topic,
     }
     else if (result.status != AtStatus::kPrompt)
     {
-        MQTT_RTT_LOG("[mqtt %u] pub exec fail t=%s l=%u\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()),
+        MQTT_RTT_LOG("[mqtt %s] pub exec fail t=%s l=%u\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text,
                      topic,
                      static_cast<unsigned>(length));
         recordFailure(MqttFailStep::kPublish, result.status, result.line);
@@ -352,8 +353,8 @@ bool EspAtMqtt::publish(const char *topic,
 
     if (!AtChannel::sendRaw(payload, length, kRawWriteTimeoutMs))
     {
-        MQTT_RTT_LOG("[mqtt %u] pub sendRaw fail l=%u\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()),
+        MQTT_RTT_LOG("[mqtt %s] pub sendRaw fail l=%u\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text,
                      static_cast<unsigned>(length));
         recordFailure(MqttFailStep::kPublish, AtStatus::kTimeout, "RAWDATA");
         return false;
@@ -367,8 +368,8 @@ bool EspAtMqtt::publish(const char *topic,
          * 所以模块那边不会卡在数据模式；这里丢掉的是"是否被接受"的确认。
          */
         const bool hasErrorLine = (line[0] != '\0');
-        MQTT_RTT_LOG("[mqtt %u] pub waitAck fail t=%s l=%u\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()),
+        MQTT_RTT_LOG("[mqtt %s] pub waitAck fail t=%s l=%u\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text,
                      topic,
                      static_cast<unsigned>(length));
         recordFailure(MqttFailStep::kPublish,
@@ -379,8 +380,8 @@ bool EspAtMqtt::publish(const char *topic,
 
     if (std::strcmp(line, "+MQTTPUB:OK") != 0)
     {
-        MQTT_RTT_LOG("[mqtt %u] pub ack=%s t=%s\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()),
+        MQTT_RTT_LOG("[mqtt %s] pub ack=%s t=%s\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text,
                      line,
                      topic);
         recordFailure(MqttFailStep::kPublish, AtStatus::kError, line);

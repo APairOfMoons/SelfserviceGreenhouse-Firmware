@@ -18,6 +18,7 @@
 #include "app/MessageSenderSink.h"
 #include "communication/app/MessageSender.h"
 #include "configuration/LogicalConfiguration.h"
+#include "configuration/RtcClock.h"
 #include "logic/LogicController.h"
 #include "logic/TelemetryReporter.h"
 #include "rtt/SEGGER_RTT.h"
@@ -95,13 +96,13 @@ void logStatusSummary(const uint32_t now_ms,
   unsigned s_frac = 0U;
   toFixedDec2(snap.soil_humidity, &s_sign, &s_whole, &s_frac);
 
-  // new_thread0 栈仅 1024 B：使用 SEGGER_RTT_printf（64 B 栈缓冲，仅整数格式化）
+  // new_thread0 栈仅 1024 B：使用 SEGGER_RTT_printf（64 B 栈缓冲，仅整数与短字符串格式化）
   // 替代 rtt_printf("%f")（256 B 栈缓冲 + libc vsnprintf 浮点格式化），避免栈溢出。
   SEGGER_RTT_printf(
       0U,
-      "[ctrl %u ms] T=%s%u.%02uC H=%s%u.%02u S=%s%u.%02u L=%u W=%u F%u L%u "
+      "[ctrl %s] T=%s%u.%02uC H=%s%u.%02u S=%s%u.%02u L=%u W=%u F%u L%u "
       "H%u P%u A=%d err=0x%x\r\n",
-      static_cast<unsigned>(now_ms), t_sign, t_whole, t_frac, h_sign, h_whole,
+      RtcClock::logTime(now_ms).text, t_sign, t_whole, t_frac, h_sign, h_whole,
       h_frac, s_sign, s_whole, s_frac, static_cast<unsigned>(snap.illuminance),
       snap.has_enough_water ? 1U : 0U, snap.fan_on ? 1U : 0U,
       snap.light_on ? 1U : 0U, snap.heater_on ? 1U : 0U,
@@ -111,12 +112,30 @@ void logStatusSummary(const uint32_t now_ms,
 
 void logExceptionEdges(const uint32_t now_ms, const uint32_t rising_mask) {
   if (0U != (rising_mask & greenhouse::EXCEPTION_WATER_LACK)) {
-    SEGGER_RTT_printf(0U, "[ctrl %u ms] EXC: WATER_LACK\r\n",
-                      static_cast<unsigned>(now_ms));
+    SEGGER_RTT_printf(0U, "[ctrl %s] EXC: WATER_LACK\r\n",
+                      RtcClock::logTime(now_ms).text);
   }
   if (0U != (rising_mask & greenhouse::EXCEPTION_TURNTABLE_FAILED)) {
-    SEGGER_RTT_printf(0U, "[ctrl %u ms] EXC: TURNTABLE_FAILED\r\n",
-                      static_cast<unsigned>(now_ms));
+    SEGGER_RTT_printf(0U, "[ctrl %s] EXC: TURNTABLE_FAILED\r\n",
+                      RtcClock::logTime(now_ms).text);
+  }
+}
+
+void syncRtcToController(const uint32_t now_ms,
+                         greenhouse::LogicController &controller,
+                         uint32_t &last_rtc_version) {
+  const uint32_t rtc_version = RtcClock::version();
+  if (rtc_version == last_rtc_version) {
+    return;
+  }
+
+  uint32_t ms_of_day = 0U;
+  if (RtcClock::readTimeOfDayMs(now_ms, &ms_of_day)) {
+    last_rtc_version = rtc_version;
+    controller.setTimeOfDay(ms_of_day);
+    SEGGER_RTT_printf(0U, "[ctrl %s] rtc sync tod=%u ms\r\n",
+                      RtcClock::logTime(now_ms).text,
+                      static_cast<unsigned>(ms_of_day));
   }
 }
 
@@ -168,13 +187,17 @@ void new_thread0_entry(void *pvParameters) {
           greenhouse::GreenhouseControlLoop(*controller, *reporter,
                                             *exception_sink);
 
+  uint32_t last_rtc_version = 0U;
   TickType_t last_wake_tick = xTaskGetTickCount();
+  syncRtcToController(last_wake_tick * (portTICK_PERIOD_MS), *controller,
+                      last_rtc_version);
   uint32_t last_rtt_log_ms =
       last_wake_tick * (portTICK_PERIOD_MS)-kRttLogPeriodMs;
 
   while (true) {
     const uint32_t now_ms = xTaskGetTickCount() * (portTICK_PERIOD_MS);
 
+    syncRtcToController(now_ms, *controller, last_rtc_version);
     control_loop->step(now_ms);
 
     const uint32_t rising_mask = control_loop->lastRisingExceptionMask();

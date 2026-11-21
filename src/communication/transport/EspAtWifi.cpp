@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "AtChannel.h"
+#include "communication/domain/SntpTimeParser.h"
 #include "communication/domain/TextWriter.h"
 
 
@@ -38,6 +39,24 @@ namespace
  * 而这条缓冲要贯穿整个 execute() 调用的栈深度。
  */
 char s_commandBuffer[AT_COMMAND_MAX];
+
+bool hasUnsafeAtChars(const char *text)
+{
+    if (text == nullptr)
+    {
+        return false;
+    }
+
+    for (const char *p = text; *p != '\0'; ++p)
+    {
+        if ((*p == '"') || (*p == '\\') || (*p == '\r') || (*p == '\n'))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 } // namespace
 
@@ -132,6 +151,69 @@ bool EspAtWifi::isNetworkReady(uint32_t timeoutMs)
                        : static_cast<uint8_t>(0xFFU);
 
     return (state == '2') || (state == '3');
+}
+
+
+bool EspAtWifi::configureSntp(int8_t timezoneHours,
+                              const char *server1,
+                              const char *server2,
+                              uint32_t timeoutMs)
+{
+    if ((timezoneHours < -12) || (timezoneHours > 14) ||
+        hasUnsafeAtChars(server1) || hasUnsafeAtChars(server2))
+    {
+        return false;
+    }
+
+    /*
+     * 省略服务器时仅发 `AT+CIPSNTPCFG=1,<tz>`（约 17 B），远低于该固件 ~59-75 B 的
+     * AT 命令行上限；若调用方指定自定义服务器，仍通过 TextWriter 严控不越界。
+     */
+    TextWriter writer(s_commandBuffer, sizeof(s_commandBuffer));
+    writer.append("AT+CIPSNTPCFG=1,");
+    writer.appendInt(static_cast<int32_t>(timezoneHours));
+
+    if ((server1 != nullptr) && (server1[0] != '\0'))
+    {
+        writer.append(",\"");
+        writer.append(server1);
+        writer.append('"');
+    }
+
+    if ((server2 != nullptr) && (server2[0] != '\0'))
+    {
+        writer.append(",\"");
+        writer.append(server2);
+        writer.append('"');
+    }
+
+    if (writer.isTruncated())
+    {
+        return false;
+    }
+
+    return AtChannel::execute(writer.data(), timeoutMs).status == AtStatus::kOk;
+}
+
+
+bool EspAtWifi::querySntpTime(RtcDateTime *outDateTime, uint32_t timeoutMs)
+{
+    if (outDateTime == nullptr)
+    {
+        return false;
+    }
+
+    char line[AT_LINE_MAX] = {};
+    if (!AtChannel::executeAndWait("AT+CIPSNTPTIME?",
+                                   "+CIPSNTPTIME:",
+                                   timeoutMs,
+                                   line,
+                                   sizeof(line)))
+    {
+        return false;
+    }
+
+    return SntpTimeParser::parseLine(line, outDateTime);
 }
 
 

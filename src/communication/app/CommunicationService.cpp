@@ -17,6 +17,7 @@
 #include "communication/transport/EspAtWifi.h"
 #include "configuration/CommConfiguration.h"
 #include "configuration/LogicalConfiguration.h"
+#include "configuration/RtcClock.h"
 
 #ifndef GREENHOUSE_COMM_RTT_LOG
 #define GREENHOUSE_COMM_RTT_LOG 1
@@ -71,6 +72,10 @@ constexpr uint32_t kWifiRetries = 3U;
 constexpr uint32_t kBootRoundsBeforeFault = 5U;
 constexpr uint32_t kPublishFailuresBeforeReconnect = 3U;
 
+constexpr int8_t   kSntpTimezoneHours = 8;
+constexpr uint32_t kSntpUnsyncedPollMs = 5000U;
+constexpr uint32_t kSntpResyncIntervalMs = 3600000U;
+
 /*
  * LWT 报文。
  *
@@ -91,6 +96,11 @@ bool s_initialized = false;
 uint32_t s_bootRounds = 0U;
 uint32_t s_backoffMs = 0U;
 uint32_t s_publishFailures = 0U;
+
+bool s_sntpConfigured = false;
+bool s_sntpSynced = false;
+bool s_hasSntpPolled = false;
+uint32_t s_lastSntpPollMs = 0U;
 
 /* 拼 topic 与 ack 用的缓冲。单任务独占，放静态区省栈。 */
 char s_topic[64];
@@ -186,6 +196,8 @@ void stepModuleReady()
      */
     (void) EspAtWifi::enableAutoConnect(COMM_CONFIGURATION.AT_TIMEOUT_MS);
 
+    /* 每次模块初始化/复位后都需在 Wi-Fi 就绪时重新下发 SNTP 配置。 */
+    s_sntpConfigured = false;
     s_state = CommunicationService::State::kWifiReady;
 }
 
@@ -200,6 +212,15 @@ void stepWifiReady()
                             COMM_CONFIGURATION.WIFI_PASSWORD,
                             kJoinTimeoutMs))
         {
+            if (!s_sntpConfigured)
+            {
+                /* 尽最大努力配置 SNTP，不因失败阻塞后续 MQTT 建连。 */
+                s_sntpConfigured = EspAtWifi::configureSntp(kSntpTimezoneHours,
+                                                            nullptr,
+                                                            nullptr,
+                                                            COMM_CONFIGURATION.AT_TIMEOUT_MS);
+            }
+
             s_state = CommunicationService::State::kMqttConnecting;
             return;
         }
@@ -297,8 +318,8 @@ bool enterOnline()
     }
 
     const bool statusOk = publishPayload(s_topic, payload, static_cast<uint32_t>(writer.length()), 1U, true);
-    COMM_RTT_LOG("[comm %u] status pub %s len=%u\r\n",
-                 static_cast<unsigned>(commRtosUptimeMs()),
+    COMM_RTT_LOG("[comm %s] status pub %s len=%u\r\n",
+                 RtcClock::logTime(commRtosUptimeMs()).text,
                  statusOk ? "ok" : "fail",
                  static_cast<unsigned>(writer.length()));
     if (!statusOk)
@@ -319,8 +340,8 @@ bool enterOnline()
      */
     const bool subOk = EspAtMqtt::subscribe(s_topic, kSubscribeTimeoutMs);
     (void) subOk;
-    COMM_RTT_LOG("[comm %u] cfg sub %s\r\n",
-                 static_cast<unsigned>(commRtosUptimeMs()),
+    COMM_RTT_LOG("[comm %s] cfg sub %s\r\n",
+                 RtcClock::logTime(commRtosUptimeMs()).text,
                  subOk ? "ok" : "fail");
 
     if (!subOk && (g_mqttFailStatus == static_cast<uint8_t>(AtStatus::kTimeout)))
@@ -393,8 +414,8 @@ bool handleUrc(const AtUrc &urc)
     {
         case AtEvent::kMqttSubReceive:
         {
-            COMM_RTT_LOG("[comm %u] urc sub len=%u\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()),
+            COMM_RTT_LOG("[comm %s] urc sub len=%u\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text,
                          static_cast<unsigned>(urc.length));
             handleConfig(urc);
             return true;
@@ -402,15 +423,15 @@ bool handleUrc(const AtUrc &urc)
 
         case AtEvent::kMqttDisconnected:
         {
-            COMM_RTT_LOG("[comm %u] urc mqtt disc\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()));
+            COMM_RTT_LOG("[comm %s] urc mqtt disc\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text);
             return false;
         }
 
         case AtEvent::kWifiDisconnected:
         {
-            COMM_RTT_LOG("[comm %u] urc wifi disc\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()));
+            COMM_RTT_LOG("[comm %s] urc wifi disc\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text);
             return false;
         }
 
@@ -422,12 +443,64 @@ bool handleUrc(const AtUrc &urc)
 }
 
 
+void pollSntpIfDue()
+{
+    const uint32_t nowMs = commRtosUptimeMs();
+    const bool needInitialSync = (!s_sntpSynced) || (!RtcClock::isSynced());
+    const uint32_t intervalMs = needInitialSync ? kSntpUnsyncedPollMs : kSntpResyncIntervalMs;
+
+    if (s_hasSntpPolled && ((nowMs - s_lastSntpPollMs) < intervalMs))
+    {
+        return;
+    }
+
+    if (!s_sntpConfigured)
+    {
+        s_sntpConfigured = EspAtWifi::configureSntp(kSntpTimezoneHours,
+                                                    nullptr,
+                                                    nullptr,
+                                                    COMM_CONFIGURATION.AT_TIMEOUT_MS);
+        if (!s_sntpConfigured)
+        {
+            s_hasSntpPolled = true;
+            s_lastSntpPollMs = commRtosUptimeMs();
+            return;
+        }
+    }
+
+    RtcDateTime dt = {};
+    if (EspAtWifi::querySntpTime(&dt, COMM_CONFIGURATION.AT_TIMEOUT_MS))
+    {
+        const uint32_t syncUptimeMs = commRtosUptimeMs();
+        if (RtcClock::updateFromSntp(dt, syncUptimeMs))
+        {
+            s_sntpSynced = true;
+            s_hasSntpPolled = true;
+            s_lastSntpPollMs = syncUptimeMs;
+            COMM_RTT_LOG("[comm %s] sntp sync %04u-%02u-%02u %02u:%02u:%02u\r\n",
+                         RtcClock::logTime(syncUptimeMs).text,
+                         static_cast<unsigned>(dt.year),
+                         static_cast<unsigned>(dt.month),
+                         static_cast<unsigned>(dt.day),
+                         static_cast<unsigned>(dt.hour),
+                         static_cast<unsigned>(dt.minute),
+                         static_cast<unsigned>(dt.second));
+            return;
+        }
+    }
+
+    /* 未同步（1970）或 AT 超时时不破坏 MQTT 连接，等待下一轮周期再查询。 */
+    s_hasSntpPolled = true;
+    s_lastSntpPollMs = commRtosUptimeMs();
+}
+
+
 void stepOnline()
 {
     if (!enterOnline())
     {
-        COMM_RTT_LOG("[comm %u] exit online: enter fail\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()));
+        COMM_RTT_LOG("[comm %s] exit online: enter fail\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text);
         s_state = CommunicationService::State::kReconnecting;
         return;
     }
@@ -442,8 +515,8 @@ void stepOnline()
         {
             if (!handleUrc(urc))
             {
-                COMM_RTT_LOG("[comm %u] exit online: urc disc\r\n",
-                             static_cast<unsigned>(commRtosUptimeMs()));
+                COMM_RTT_LOG("[comm %s] exit online: urc disc\r\n",
+                             RtcClock::logTime(commRtosUptimeMs()).text);
                 s_state = CommunicationService::State::kReconnecting;
                 return;
             }
@@ -468,8 +541,8 @@ void stepOnline()
                 ++s_publishFailures;
             }
 
-            COMM_RTT_LOG("[comm %u] pub %s l=%u %s s=%u f=%u d=%u\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()),
+            COMM_RTT_LOG("[comm %s] pub %s l=%u %s s=%u f=%u d=%u\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text,
                          message.topic,
                          static_cast<unsigned>(message.length),
                          pubOk ? "ok" : "fail",
@@ -479,8 +552,8 @@ void stepOnline()
 
             if (s_publishFailures >= kPublishFailuresBeforeReconnect)
             {
-                COMM_RTT_LOG("[comm %u] exit online: pub fail=%u\r\n",
-                             static_cast<unsigned>(commRtosUptimeMs()),
+                COMM_RTT_LOG("[comm %s] exit online: pub fail=%u\r\n",
+                             RtcClock::logTime(commRtosUptimeMs()).text,
                              static_cast<unsigned>(s_publishFailures));
                 s_state = CommunicationService::State::kReconnecting;
                 return;
@@ -498,14 +571,16 @@ void stepOnline()
                 {
                     if (!handleUrc(urc))
                     {
-                        COMM_RTT_LOG("[comm %u] exit online: pub urc disc\r\n",
-                                     static_cast<unsigned>(commRtosUptimeMs()));
+                        COMM_RTT_LOG("[comm %s] exit online: pub urc disc\r\n",
+                                     RtcClock::logTime(commRtosUptimeMs()).text);
                         s_state = CommunicationService::State::kReconnecting;
                         return;
                     }
                 }
             }
         }
+
+        pollSntpIfDue();
     }
 }
 
@@ -533,6 +608,10 @@ void stepFault()
     /* 连 AT 都不应答了，只能硬复位模块 */
     (void) EspAtWifi::reset(COMM_CONFIGURATION.AT_TIMEOUT_MS);
 
+    s_sntpConfigured = false;
+    s_sntpSynced = false;
+    s_hasSntpPolled = false;
+
     s_bootRounds = 0U;
     commRtosDelay(kFaultHoldMs);
     s_state = CommunicationService::State::kBooting;
@@ -559,8 +638,8 @@ bool CommunicationService::initialize()
     if (!AtChannel::initialize())
     {
         g_commInit = 2U;
-        COMM_RTT_LOG("[comm %u] init fail (uart)\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()));
+        COMM_RTT_LOG("[comm %s] init fail (uart)\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text);
         return false;
     }
 
@@ -568,8 +647,8 @@ bool CommunicationService::initialize()
     if (s_queue == nullptr)
     {
         g_commInit = 2U;
-        COMM_RTT_LOG("[comm %u] init fail (queue)\r\n",
-                     static_cast<unsigned>(commRtosUptimeMs()));
+        COMM_RTT_LOG("[comm %s] init fail (queue)\r\n",
+                     RtcClock::logTime(commRtosUptimeMs()).text);
         return false;
     }
 
@@ -583,8 +662,8 @@ bool CommunicationService::initialize()
         nonceHex[0] = '?';
         nonceHex[1] = '\0';
     }
-    COMM_RTT_LOG("[comm %u] init ok b=%s\r\n",
-                 static_cast<unsigned>(commRtosUptimeMs()),
+    COMM_RTT_LOG("[comm %s] init ok b=%s\r\n",
+                 RtcClock::logTime(commRtosUptimeMs()).text,
                  nonceHex);
 #endif
     return true;
@@ -605,8 +684,8 @@ void CommunicationService::run()
         }
     }
 
-    COMM_RTT_LOG("[comm %u] state=%s\r\n",
-                 static_cast<unsigned>(commRtosUptimeMs()),
+    COMM_RTT_LOG("[comm %s] state=%s\r\n",
+                 RtcClock::logTime(commRtosUptimeMs()).text,
                  stateName(s_state));
 
     for (;;)
@@ -663,8 +742,8 @@ void CommunicationService::run()
         const State nextState = s_state;
         if (nextState != prevState)
         {
-            COMM_RTT_LOG("[comm %u] %s -> %s\r\n",
-                         static_cast<unsigned>(commRtosUptimeMs()),
+            COMM_RTT_LOG("[comm %s] %s -> %s\r\n",
+                         RtcClock::logTime(commRtosUptimeMs()).text,
                          stateName(prevState),
                          stateName(nextState));
         }

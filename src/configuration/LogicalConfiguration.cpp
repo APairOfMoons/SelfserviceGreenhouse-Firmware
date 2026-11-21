@@ -17,6 +17,7 @@
 namespace
 {
 
+constexpr uint32_t kSecondMs = 1000UL;
 constexpr uint32_t kMinuteMs = 60UL * 1000UL;
 constexpr uint32_t kHourMs = 60UL * kMinuteMs;
 constexpr uint32_t kDayMs = 24UL * kHourMs;
@@ -134,8 +135,8 @@ LogicalStatics makeDefaultConfiguration()
     config.variable.dayStartMs = 7UL * kHourMs;
     config.variable.dayLengthMs = 10UL * kHourMs;
 
-    config.variable.pumpDurationMs = 800UL;
-    config.variable.pumpMinIntervalMs = 6UL * kHourMs;
+    config.variable.pumpDurationMs = 8000UL;
+    config.variable.pumpMinIntervalMs = 20UL * kSecondMs;
 
     config.variable.maxTurnAngle = 60;
     // 实际养护每天只转 10~30°，步角取 10° 可整除整段区间（10→1 次、30→3 次）；
@@ -147,7 +148,7 @@ LogicalStatics makeDefaultConfiguration()
 
     config.fixed.sensorFailLimit = 3U;
     config.fixed.manualTimeoutMs = 30UL * kMinuteMs;
-    config.fixed.hasRtc = false;
+    config.fixed.hasRtc = true;
 
     return config;
 }
