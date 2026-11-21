@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #ifndef GREENHOUSE_USE_FAKE_HARDWARE
-#define GREENHOUSE_USE_FAKE_HARDWARE 1
+#define GREENHOUSE_USE_FAKE_HARDWARE 0
 #endif
 
 #include "app/ExceptionMapping.h"

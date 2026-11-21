@@ -68,7 +68,6 @@ LogicalStatics fastParams()
     params.variable.maxSoilHumidity = 55.0F;
     params.variable.pumpDurationMs = 800UL;
     params.variable.pumpMinIntervalMs = 6UL * kHour;
-    params.variable.pumpMaxPerDay = 3U;
 
     params.variable.maxTurnAngle = 60;
     params.variable.turnStepAngle = 15;
@@ -157,11 +156,34 @@ void testIrrigationDoseAndCooldown()
 
     h.advance(2UL * kSecond); // 剂量结束
     CHECK(!h.hw.pump_on);
-    CHECK(h.ctrl.snapshot().pump_runs_today == 1UL);
+    CHECK(h.hw.pump_toggles == 2U);
 
     h.advance(10UL * kMinute); // 6 小时冷却期内不再启动
     CHECK(!h.hw.pump_on);
-    CHECK(h.ctrl.snapshot().pump_runs_today == 1UL);
+    CHECK(h.hw.pump_toggles == 2U);
+}
+
+// 同一天内超过原先 3 次上限后，只要满足冷却间隔仍允许继续浇水
+void testIrrigationNotLimitedByDailyCount()
+{
+    Harness h;
+    h.params.variable.pumpMinIntervalMs = 1UL * kHour;
+    h.ctrl.setConfiguration(h.params);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        h.hw.soil_humidity = 20.0F;
+        h.advance(300UL);
+        CHECK(h.hw.pump_on);
+        h.advance(2UL * kSecond);
+        CHECK(!h.hw.pump_on);
+        if (i < 3)
+        {
+            h.hw.soil_humidity = 50.0F;
+            h.advance(1UL * kHour);
+        }
+    }
+    CHECK(h.hw.pump_toggles == 8U);
 }
 
 // 5) 缺水立即停泵，且拒绝手动启动
@@ -403,9 +425,8 @@ void testOverTempBlocksPump()
 
     h.advance(4UL * kSecond);
     CHECK(!h.hw.pump_on);
-    // 不能"先开一拍再被冲突仲裁关掉"：否则会白占一次每日配额、泵也会被短脉冲通断
+    // 不能"先开一拍再被冲突仲裁关掉"，避免泵被短脉冲通断
     CHECK(h.hw.pump_toggles == 0U);
-    CHECK(h.ctrl.snapshot().pump_runs_today == 0U);
 }
 
 // 低温高湿但没到破例线：风扇不应反复通断（避免继电器被 30 s 周期磨损）
@@ -509,7 +530,6 @@ void testPumpTimeoutClearsAfterNextDose()
 {
     Harness h;
     h.params.variable.pumpMinIntervalMs = 0UL;
-    h.params.variable.pumpMaxPerDay = 12U;
     h.ctrl.setConfiguration(h.params);
 
     h.hw.soil_humidity = 20.0F;
@@ -777,6 +797,7 @@ int main()
     testHeaterHysteresis();
     testFanOnHighAirHumidity();
     testIrrigationDoseAndCooldown();
+    testIrrigationNotLimitedByDailyCount();
     testWaterLackStopsPump();
     testTemperatureSensorFault();
     testOverTemperatureInterlock();

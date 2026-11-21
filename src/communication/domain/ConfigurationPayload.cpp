@@ -268,10 +268,6 @@ class Parser
         {
             return assignUint32(value, &config->pumpMinIntervalMs);
         }
-        if (equals(key, "pumpMaxPerDay"))
-        {
-            return assignUint32(value, &config->pumpMaxPerDay);
-        }
         if (equals(key, "turnIntervalMs"))
         {
             return assignUint32(value, &config->turnIntervalMs);

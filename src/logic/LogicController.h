@@ -112,7 +112,6 @@ struct ControllerSnapshot
     OperatingMode mode;
     bool time_valid;
     uint32_t uptime_ms;
-    uint32_t pump_runs_today;
 };
 
 class LogicController
@@ -178,7 +177,6 @@ class LogicController
 
     bool isDaytime(uint32_t now_ms) const;
     uint32_t timeOfDay(uint32_t now_ms) const;
-    uint32_t dayIndex(uint32_t now_ms) const;
     void setOutput(OutputId id, bool on);
     void retryOutputs();
     static uint8_t indexOf(OutputId id);
@@ -229,8 +227,6 @@ class LogicController
 
     uint32_t pump_start_ms_;
     uint32_t pump_last_start_ms_;
-    uint32_t pump_runs_today_;
-    uint32_t pump_day_index_;
     bool pump_active_;
     bool pump_started_once_;
     bool pump_dose_started_;   // 泵真正通电后才开始计剂量时间

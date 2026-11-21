@@ -84,8 +84,7 @@ bool validate(const VariableStatics &candidate)
 
     const bool pumpOk = (candidate.pumpDurationMs > 0UL) &&
                         (candidate.pumpDurationMs <= 10UL * kMinuteMs) &&
-                        (candidate.pumpMinIntervalMs >= candidate.pumpDurationMs) &&
-                        (candidate.pumpMaxPerDay >= 1U) && (candidate.pumpMaxPerDay <= 12U);
+                        (candidate.pumpMinIntervalMs >= candidate.pumpDurationMs);
 
     const bool lightOk = (candidate.illuminanceMinOnMs <= kDayMs) &&
                          (candidate.illuminanceHysteresis >= 0.0) &&
@@ -137,7 +136,6 @@ LogicalStatics makeDefaultConfiguration()
 
     config.variable.pumpDurationMs = 800UL;
     config.variable.pumpMinIntervalMs = 6UL * kHourMs;
-    config.variable.pumpMaxPerDay = 3U;
 
     config.variable.maxTurnAngle = 60;
     // 实际养护每天只转 10~30°，步角取 10° 可整除整段区间（10→1 次、30→3 次）；

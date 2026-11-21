@@ -47,8 +47,6 @@ LogicController::LogicController(IHardwareData &hw, const LogicalStatics &config
       last_fan_switch_ms_(0UL),
       pump_start_ms_(0UL),
       pump_last_start_ms_(0UL),
-      pump_runs_today_(0UL),
-      pump_day_index_(0UL),
       pump_active_(false),
       pump_started_once_(false),
       pump_dose_started_(false),
@@ -88,7 +86,6 @@ LogicController::LogicController(IHardwareData &hw, const LogicalStatics &config
     snap_.mode = OperatingMode::AUTO;
     snap_.time_valid = false;
     snap_.uptime_ms = 0UL;
-    snap_.pump_runs_today = 0UL;
 }
 
 // ---------------------------------------------------------------- 配置
@@ -205,11 +202,6 @@ uint32_t LogicController::timeOfDay(uint32_t now_ms) const
     return (time_of_day_ms_ + elapsed(now_ms, time_base_ms_)) % kDayMs;
 }
 
-uint32_t LogicController::dayIndex(uint32_t now_ms) const
-{
-    return now_ms / kDayMs;
-}
-
 bool LogicController::isDaytime(uint32_t now_ms) const
 {
     if (!time_valid_)
@@ -271,7 +263,6 @@ void LogicController::step(uint32_t now_ms)
     snap_.time_valid = time_valid_;
     snap_.uptime_ms = elapsed(now_ms, boot_ms_);
     snap_.turn_angle = turn_angle_;
-    snap_.pump_runs_today = pump_runs_today_;
     snap_.pump_on = outputs_[static_cast<uint8_t>(OutputId::PUMP)];
 
     last_step_ms_ = now_ms;
@@ -751,18 +742,6 @@ bool LogicController::pumpAllowed(uint32_t now_ms)
         return false;
     }
 
-    const uint32_t today = dayIndex(now_ms);
-    if (today != pump_day_index_)
-    {
-        pump_day_index_ = today;
-        pump_runs_today_ = 0UL;
-    }
-
-    if (pump_runs_today_ >= config_.variable.pumpMaxPerDay)
-    {
-        return false;
-    }
-
     if (pump_started_once_ &&
         (elapsed(now_ms, pump_last_start_ms_) < config_.variable.pumpMinIntervalMs))
     {
@@ -842,8 +821,8 @@ void LogicController::updateIrrigation(uint32_t now_ms)
         return; // 土还够湿
     }
 
-    // 下面两个检查必须在"启动前"完成：先开再被冲突仲裁关掉，会白占一次
-    // 每日浇水配额，泵还会被短脉冲通断一次。
+    // 下面两个检查必须在"启动前"完成：先开再被冲突仲裁关掉，
+    // 会导致泵被短脉冲通断一次。
     if (policy_.pump_blocked_on_over_temperature && sensorOk(temperature_) &&
         (temperature_.value > config_.variable.maxTemperature))
     {
@@ -1022,10 +1001,9 @@ void LogicController::setOutput(OutputId id, bool on)
     {
         if (on && pump_active_ && !pump_dose_started_)
         {
-            // 泵真正通电后才开始计剂量、才占用当日浇水次数。
+            // 泵真正通电后才开始计剂量时间。
             pump_dose_started_ = true;
             pump_applied_ms_ = now_ms_;
-            pump_runs_today_++;
         }
         if (!on)
         {

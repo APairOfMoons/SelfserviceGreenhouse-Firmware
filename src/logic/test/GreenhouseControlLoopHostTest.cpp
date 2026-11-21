@@ -79,7 +79,6 @@ void initTestParams(LogicalStatics *out_params)
 
     params.variable.pumpDurationMs = 800UL;
     params.variable.pumpMinIntervalMs = 6UL * kHour;
-    params.variable.pumpMaxPerDay = 3U;
 
     params.variable.maxTurnAngle = 60;
     params.variable.turnStepAngle = 15;

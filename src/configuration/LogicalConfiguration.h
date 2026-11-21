@@ -46,7 +46,6 @@ struct VariableStatics
     // 浇水
     uint32_t pumpDurationMs;          // 单次浇水持续时间
     uint32_t pumpMinIntervalMs;       // 两次浇水最小间隔
-    uint32_t pumpMaxPerDay;           // 每日浇水次数上限
 
     // 转盘
     int16_t maxTurnAngle;
