@@ -701,6 +701,12 @@ void LogicController::updateIlluminance(uint32_t now_ms)
     // 没有时间基准时按策略退化：允许补光则忽略昼夜，只按光照阈值。
     const bool daytime = time_valid_ ? isDaytime(now_ms) : policy_.allow_light_without_time;
 
+    // 开灯阈值与关灯阈值错开：低于 min 才开，高于 min + 回滞才关。
+    // 回滞配 0 时退化为单阈值（与旧行为一致）。
+    const float on_threshold = static_cast<float>(config_.variable.minIlluminance);
+    const float off_threshold =
+        on_threshold + static_cast<float>(config_.variable.illuminanceHysteresis);
+
     if (!daytime)
     {
         // 夜间不补光；但满足最短点亮时间后才关，避免频繁通断
@@ -713,11 +719,13 @@ void LogicController::updateIlluminance(uint32_t now_ms)
             want = false;
         }
     }
-    else if (illuminance_.value < static_cast<float>(static_cast<uint16_t>(config_.variable.minIlluminance)))
+    else if (illuminance_.value < on_threshold)
     {
         want = true;
     }
-    else if (light_on && (elapsed(now_ms, light_on_since_ms_) < config_.variable.illuminanceMinOnMs))
+    else if (light_on &&
+             ((illuminance_.value < off_threshold) ||
+              (elapsed(now_ms, light_on_since_ms_) < config_.variable.illuminanceMinOnMs)))
     {
         want = true;
     }

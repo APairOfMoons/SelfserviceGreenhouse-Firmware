@@ -36,6 +36,7 @@ struct VariableStatics
     // 光照（lx）
     double minIlluminance;            // 补光阈值：低于它才开灯
     double maxIlluminance;            // 仅用于状态判定/上报，控制不读
+    double illuminanceHysteresis;     // 关灯回滞：高于 min + 该值才关灯（0 = 关闭回滞）
     uint32_t illuminanceMinOnMs;      // 补光最短点亮时间
 
     // 昼夜窗口

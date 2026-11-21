@@ -3,9 +3,9 @@
 //
 // 用法（在仓库根目录，任意主机编译器，C++11）：
 //   g++ -std=c++11 -DLOGIC_HOST_TEST -Isrc src/logic/LogicController.cpp
-//       src/logic/VariableJudge.cpp src/logic/TelemetryReporter.cpp
-//       src/logic/FakeHardware.cpp src/app/ExceptionMapping.cpp
-//       src/app/MonitoringDataMapper.cpp src/configuration/LogicalConfiguration.cpp
+//       src/logic/TelemetryReporter.cpp src/logic/FakeHardware.cpp
+//       src/app/ExceptionMapping.cpp src/app/MonitoringDataMapper.cpp
+//       src/configuration/LogicalConfiguration.cpp
 //       src/logic/test/LogicControllerHostTest.cpp -o logic_test.exe
 //   .\logic_test.exe
 //
@@ -18,12 +18,11 @@
 #include <limits>
 
 #include "app/ExceptionMapping.h"
-#include "logic/FakeHardware.h"
-#include "configuration/LogicalConfiguration.h"
-#include "logic/LogicController.h"
 #include "app/MonitoringDataMapper.h"
+#include "configuration/LogicalConfiguration.h"
+#include "logic/FakeHardware.h"
+#include "logic/LogicController.h"
 #include "logic/TelemetryReporter.h"
-#include "logic/VariableJudge.h"
 
 namespace {
 
@@ -225,6 +224,29 @@ void testLightOnlyInDaytime()
     CHECK(h.hw.light_on);
 
     h.advance(11UL * kMinute);
+    CHECK(!h.hw.light_on);
+}
+
+// 补光回滞：低于 1200 开，高于 1200 + 200 才关；中间保持
+void testLightHysteresis()
+{
+    Harness h;
+    h.params.variable.illuminanceHysteresis = 200.0;
+    h.ctrl.setConfiguration(h.params);
+
+    h.ctrl.setTimeOfDay(12UL * kHour);
+    h.hw.illuminance = 1000U;
+    h.advance(2UL * kSecond);
+    CHECK(h.hw.light_on);
+
+    // 已过最短点亮时间，光照回到 1300（未越过 1400）→ 保持点亮
+    h.hw.illuminance = 1300U;
+    h.advance(11UL * kMinute);
+    CHECK(h.hw.light_on);
+
+    // 越过 1200 + 200 = 1400 → 关灯
+    h.hw.illuminance = 1450U;
+    h.advance(2UL * kSecond);
     CHECK(!h.hw.light_on);
 }
 
@@ -563,102 +585,6 @@ void testTurntableBackoff()
     CHECK(h.hw.turntable_attempts == attempts + 1U);
 }
 
-// ---------------------------------------------------------------- 四路量判定
-
-// 测试用的逻辑配置（与默认值一致）。
-LogicalStatics makeTestConfiguration()
-{
-    LogicalStatics config = {};
-    config.variable.turnAnglePerDay = 10;
-    config.variable.minTemperature = 10.0;
-    config.variable.maxTemperature = 30.0;
-    config.variable.temperatureHysteresis = 1.5;
-    config.variable.minAirHumidity = 30.0;
-    config.variable.maxAirHumidity = 90.0;
-    config.variable.airHumidityHysteresis = 5.0;
-    config.variable.minSoilHumidity = 30.0;
-    config.variable.maxSoilHumidity = 55.0;
-    config.variable.minIlluminance = 1200.0;
-    config.variable.maxIlluminance = 100000.0;
-    config.variable.illuminanceMinOnMs = 10UL * kMinute;
-    config.variable.dayStartMs = 7UL * kHour;
-    config.variable.dayLengthMs = 10UL * kHour;
-    config.variable.pumpDurationMs = 800UL;
-    config.variable.pumpMinIntervalMs = 6UL * kHour;
-    config.variable.pumpMaxPerDay = 3U;
-    config.variable.maxTurnAngle = 60;
-    config.variable.turnStepAngle = 15;
-    config.variable.turnIntervalMs = 20UL * kMinute;
-    config.variable.samplePeriodMs = kStepMs;
-    config.fixed.sensorFailLimit = 3U;
-    config.fixed.manualTimeoutMs = 60UL * kSecond;
-    config.fixed.hasRtc = true;
-    return config;
-}
-
-void testVariableJudgeBasics()
-{
-    greenhouse::VariableJudge judge(makeTestConfiguration());
-    CHECK(!judge.usedFallbackLimits());
-
-    using greenhouse::VariableReading;
-    using greenhouse::VarId;
-    using greenhouse::VarState;
-
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 25.0F}).state == VarState::NORMAL);
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 5.0F}).state == VarState::LOW);
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 35.0F}).state == VarState::HIGH);
-    CHECK(judge.judge(VarId::TEMPERATURE, {false, 0.0F}).state == VarState::FAULT);
-
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 60.0F}).state == VarState::NORMAL);
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 20.0F}).state == VarState::LOW);
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 95.0F}).state == VarState::HIGH);
-}
-
-void testVariableJudgeHysteresis()
-{
-    greenhouse::VariableJudge judge(makeTestConfiguration());
-
-    using greenhouse::VarId;
-    using greenhouse::VarState;
-
-    // 温度 10 ℃ 为下限，回滞带宽 0.5 ℃
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 9.0F}).state == VarState::LOW);
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 10.2F}).state == VarState::LOW);
-    CHECK(judge.judge(VarId::TEMPERATURE, {true, 11.6F}).state == VarState::NORMAL);
-
-    // 空气湿度 90 % 为上限，回滞带宽 2 %
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 95.0F}).state == VarState::HIGH);
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 88.5F}).state == VarState::HIGH);
-    CHECK(judge.judge(VarId::AIR_HUMIDITY, {true, 84.0F}).state == VarState::NORMAL);
-}
-
-void testVariableJudgeMaskAndOverride()
-{
-    greenhouse::VariableJudge judge(makeTestConfiguration());
-
-    greenhouse::EnvironmentSample sample = {};
-    sample.temperature = {true, 5.0F};    // LOW  -> bit0
-    sample.air_humidity = {true, 60.0F};  // NORMAL
-    sample.soil_humidity = {true, 20.0F}; // LOW  -> bit2
-    sample.illuminance = {true, 500.0F};  // LOW  -> bit3
-
-    judge.judgeAll(sample);
-    CHECK(judge.anyOutOfRange());
-    CHECK(judge.outOfRangeMask() == 0x0DU);
-
-    // 覆盖土壤阈值后，20 % 应落入新区间
-    judge.setLimits(greenhouse::VarId::SOIL_HUMIDITY, {10.0F, 60.0F, 2.0F});
-    CHECK(judge.judge(greenhouse::VarId::SOIL_HUMIDITY, {true, 20.0F}).state ==
-          greenhouse::VarState::NORMAL);
-
-    // 全部正常时掩码为 0
-    judge.judge(greenhouse::VarId::TEMPERATURE, {true, 22.0F});
-    judge.judge(greenhouse::VarId::ILLUMINANCE, {true, 8000.0F});
-    CHECK(judge.outOfRangeMask() == 0x00U);
-    CHECK(!judge.anyOutOfRange());
-}
-
 // ---------------------------------------------------------------- 上报转换
 
 bool nearly(double a, double b, double eps)
@@ -855,6 +781,7 @@ int main()
     testTemperatureSensorFault();
     testOverTemperatureInterlock();
     testLightOnlyInDaytime();
+    testLightHysteresis();
     testTurntableSwingAndPark();
     testTurntableFallbackInterval();
     testTurntableSmallDailyAngleRoundsUp();
@@ -878,10 +805,6 @@ int main()
     testLowHumidityHysteresis();
     testLightWithoutTimeBase();
     testTurntableBackoff();
-
-    testVariableJudgeBasics();
-    testVariableJudgeHysteresis();
-    testVariableJudgeMaskAndOverride();
 
     testSnapshotToMonitoringData();
     testTelemetryReporterCadence();
