@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "communication/domain/BootSession.h"
+#include "communication/domain/CivilTime.h"
 #include "communication/domain/ConfigurationPayload.h"
 #include "communication/domain/TextWriter.h"
 #include "communication/domain/TopicBuilder.h"
@@ -14,6 +15,7 @@
 #include "communication/port/EntropySource.h"
 #include "communication/transport/AtChannel.h"
 #include "communication/transport/EspAtMqtt.h"
+#include "communication/transport/EspAtSntp.h"
 #include "communication/transport/EspAtWifi.h"
 #include "configuration/CommConfiguration.h"
 #include "configuration/LogicalConfiguration.h"
@@ -44,6 +46,7 @@ volatile uint8_t  g_commInit    = 0U;   /* 0=未尝试 1=成功 2=失败（串�
 volatile uint32_t g_commSent    = 0U;   /* 已交给模块的报文 */
 volatile uint32_t g_commDropped = 0U;   /* 队列满丢弃 */
 volatile uint32_t g_commFailed  = 0U;   /* 发布失败 */
+volatile uint32_t g_timeEpochSeconds = 0U; /* 最近一次校时的 UTC 秒，0 表示没校上 */
 }
 
 
@@ -72,6 +75,17 @@ constexpr uint32_t kBootRoundsBeforeFault = 5U;
 constexpr uint32_t kPublishFailuresBeforeReconnect = 3U;
 
 /*
+ * 校时预算。
+ *
+ * 正常网络下一条 `AT+CIPSNTPTIME?` 几十毫秒；刚使能 SNTP 时模块要先做一次
+ * NTP 往返，所以重读几次。最坏 3×1 s + 2×0.5 s ≈ 4 s，只在没校上时才会花：
+ * 校时失败不阻断 MQTT，逻辑侧按"无时间"降级。
+ */
+constexpr uint32_t kSntpQueryTimeoutMs = 1000U;
+constexpr uint32_t kSntpRetryDelayMs = 500U;
+constexpr uint32_t kSntpQueryAttempts = 3U;
+
+/*
  * LWT 报文。
  *
  * 只能是纯文本：这块固件的 CONNCFG 收不下带转义双引号的 JSON——实测 75 B 的
@@ -92,6 +106,21 @@ uint32_t s_bootRounds = 0U;
 uint32_t s_backoffMs = 0U;
 uint32_t s_publishFailures = 0U;
 
+/*
+ * 校时样本：本地当天已过毫秒 + 一个自增代号。
+ *
+ * 只由通信线程写；接线层（new_thread0）读代号判断"有没有新样本"。通信侧不再
+ * 维护会走时的时钟——那是逻辑模块 `setTimeOfDay()` 之后的职责。
+ */
+volatile uint32_t s_timeOfDayMs = 0U;
+volatile uint32_t s_timeGeneration = 0U;
+
+/*
+ * 模块明确回 ERROR 说明固件没编 SNTP（而不是这次没连上）。一次判定之后，
+ * 在模块被 AT+RST 之前不再尝试，免得每次重连都多一条 ERROR 和几秒等待。
+ */
+bool s_sntpUnsupported = false;
+
 /* 拼 topic 与 ack 用的缓冲。单任务独占，放静态区省栈。 */
 char s_topic[64];
 char s_ack[96];
@@ -108,6 +137,7 @@ const char *stateName(CommunicationService::State state)
         case CommunicationService::State::kOnline:         return "ONLN";
         case CommunicationService::State::kReconnecting:   return "RECN";
         case CommunicationService::State::kFault:          return "FALT";
+        case CommunicationService::State::kTimeSync:       return "TIME";
         default:                                           return "?";
     }
 }
@@ -200,12 +230,72 @@ void stepWifiReady()
                             COMM_CONFIGURATION.WIFI_PASSWORD,
                             kJoinTimeoutMs))
         {
-            s_state = CommunicationService::State::kMqttConnecting;
+            s_state = CommunicationService::State::kTimeSync;
             return;
         }
     }
 
     s_state = CommunicationService::State::kBooting;
+}
+
+
+void stepTimeSync()
+{
+    /*
+     * 只要 Wi-Fi 通了就校时，不依赖 MQTT：Broker 挂着的时候逻辑照样需要昼夜，
+     * 转盘没有时间基准根本不转（LogicController::updateTurntable）。
+     *
+     * 这里只把结果折算成"本地当天毫秒"存成样本；走时由逻辑模块拿到
+     * setTimeOfDay() 之后自己按 now_ms 外推，通信侧不重复实现一只钟。
+     * 校时失败不阻断连接：没有时间时逻辑侧会降级，Broker 该连还是要连。
+     */
+    if (!s_sntpUnsupported)
+    {
+        const SntpResult configResult = EspAtSntp::configureUtc(COMM_CONFIGURATION.AT_TIMEOUT_MS);
+        if (configResult == SntpResult::kUnsupported)
+        {
+            /* 回 ERROR 而不是超时：固件没编 SNTP，模块复位前不再试 */
+            s_sntpUnsupported = true;
+            COMM_RTT_LOG("[comm %u] sntp unsupported\r\n",
+                         static_cast<unsigned>(commRtosUptimeMs()));
+        }
+        else if (configResult == SntpResult::kOk)
+        {
+            for (uint32_t attempt = 0U; attempt < kSntpQueryAttempts; ++attempt)
+            {
+                uint32_t epoch = 0U;
+                const SntpResult queryResult = EspAtSntp::queryUtc(&epoch, kSntpQueryTimeoutMs);
+                if (queryResult == SntpResult::kOk)
+                {
+                    /*
+                     * 先写毫秒再自增代号：接线层看到新代号时，读到的必然是
+                     * 与它配对的那个样本。两个 32 位量各自原子，不需要 seqlock。
+                     */
+                    s_timeOfDayMs = CivilTime::timeOfDayMs(epoch,
+                                                           COMM_CONFIGURATION.TIMEZONE_OFFSET_MINUTES);
+                    ++s_timeGeneration;
+                    g_timeEpochSeconds = epoch;
+
+                    COMM_RTT_LOG("[comm %u] time sync epoch=%u tod=%u\r\n",
+                                 static_cast<unsigned>(commRtosUptimeMs()),
+                                 static_cast<unsigned>(epoch),
+                                 static_cast<unsigned>(s_timeOfDayMs));
+                    break;
+                }
+
+                if (queryResult == SntpResult::kUnsupported)
+                {
+                    s_sntpUnsupported = true;
+                    break;
+                }
+
+                /* 刚使能时模块可能还没完成第一次 NTP 往返，等一会儿再读 */
+                commRtosDelay(kSntpRetryDelayMs);
+            }
+        }
+    }
+
+    s_state = CommunicationService::State::kMqttConnecting;
 }
 
 
@@ -530,7 +620,9 @@ void stepReconnecting()
 
 void stepFault()
 {
-    /* 连 AT 都不应答了，只能硬复位模块 */
+    /* 连 AT 都不应答了，只能硬复位模块；复位后 SNTP 配置也丢了，允许重新尝试 */
+    s_sntpUnsupported = false;
+
     (void) EspAtWifi::reset(COMM_CONFIGURATION.AT_TIMEOUT_MS);
 
     s_bootRounds = 0U;
@@ -653,6 +745,12 @@ void CommunicationService::run()
                 break;
             }
 
+            case State::kTimeSync:
+            {
+                stepTimeSync();
+                break;
+            }
+
             default:
             {
                 stepFault();
@@ -714,4 +812,23 @@ uint32_t CommunicationService::droppedCount()
 uint32_t CommunicationService::failedCount()
 {
     return g_commFailed;
+}
+
+
+bool CommunicationService::latestTimeOfDay(uint32_t *generation, uint32_t *msOfDay)
+{
+    if ((generation == nullptr) || (msOfDay == nullptr))
+    {
+        return false;
+    }
+
+    const uint32_t current = s_timeGeneration;
+    if (current == 0U)
+    {
+        return false;
+    }
+
+    *generation = current;
+    *msOfDay = s_timeOfDayMs;
+    return true;
 }

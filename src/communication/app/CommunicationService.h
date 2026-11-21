@@ -31,6 +31,12 @@ class CommunicationService
         bool retain;
     };
 
+    /**
+     * 状态机。
+     *
+     * `kTimeSync` 追加在末尾而不是插在 `kWifiReady` 之后：`g_commState` 是它的
+     * 数值镜像，0…6 已经被调试说明和现场记录引用，重排会让旧结论对不上号。
+     */
     enum class State : uint8_t
     {
         kBooting,          ///< 刚上电，等模块稳定
@@ -40,6 +46,7 @@ class CommunicationService
         kOnline,           ///< 收发正常
         kReconnecting,     ///< 断线后退避
         kFault,            ///< 连续失败，准备硬复位模块
+        kTimeSync,         ///< Wi-Fi 已通，正在校时（7）
     };
 
     /** 建队列、打开串口。重复调用返回 true。 */
@@ -66,6 +73,20 @@ class CommunicationService
 
     /** 模块拒绝或应答超时的报文数。 */
     static uint32_t failedCount();
+
+    /**
+     * 最近一次校时得到的"本地当天已过毫秒"。
+     *
+     * 通信侧只交付一个样本、不维护第二只走时的钟：走时由逻辑模块
+     * （`LogicController::setTimeOfDay` + 它自己的 `now_ms` 外推）负责。
+     * `generation` 每次校时自增，调用方记住上一次的值即可判断有没有新样本；
+     * 0 表示还没校过时。
+     *
+     * 非阻塞，只读两个 32 位量；写入方是通信线程。
+     *
+     * @return 已校过时且参数有效时返回 true
+     */
+    static bool latestTimeOfDay(uint32_t *generation, uint32_t *msOfDay);
 };
 
 

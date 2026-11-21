@@ -24,6 +24,15 @@ struct CommStatics
     const int BROKER_PORT;
     const char *MQTT_PASSWORD;
 
+    /*
+     * 本地时区相对 UTC 的分钟偏移，东八区 = 480。
+     *
+     * SNTP 固定按 UTC 取（模块返回的字符串里没有时区字段，见
+     * communication/docs/AT_COMMAND_SET.md §4.6），"本地时间"是固件自己加出来的。
+     * 换部署地只改这一个值；现行规则不处理夏令时。
+     */
+    const int TIMEZONE_OFFSET_MINUTES;
+
     const uint32_t RECONNECT_MIN_MS;
     const uint32_t RECONNECT_MAX_MS;
     const uint32_t AT_TIMEOUT_MS;
@@ -38,6 +47,8 @@ constexpr CommStatics COMM_CONFIGURATION = {
     "endpoint.blackblade.dev",
     1883,
     "Mq#Password",
+
+    480,
 
     2000U,
     60000U,

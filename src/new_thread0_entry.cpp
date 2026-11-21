@@ -16,6 +16,7 @@
 #include "hardware/HardwareDataManager.h"
 #endif
 #include "app/MessageSenderSink.h"
+#include "communication/app/CommunicationService.h"
 #include "communication/app/MessageSender.h"
 #include "configuration/LogicalConfiguration.h"
 #include "logic/LogicController.h"
@@ -56,6 +57,8 @@ StaticStorage<MessageSender> g_sender_storage;
 StaticStorage<greenhouse::MessageSenderSink> g_telemetry_sink_storage;
 StaticStorage<MessageSenderExceptionSink> g_exception_sink_storage;
 LogicalStatics g_initial_cfg = {};
+/* 已应用到控制器的校时代号；通信侧每次校时把它加一 */
+uint32_t g_last_time_generation = 0U;
 StaticStorage<greenhouse::LogicController> g_controller_storage;
 StaticStorage<greenhouse::TelemetryReporter> g_reporter_storage;
 StaticStorage<greenhouse::GreenhouseControlLoop> g_control_loop_storage;
@@ -176,6 +179,17 @@ void new_thread0_entry(void *pvParameters) {
     const uint32_t now_ms = xTaskGetTickCount() * (portTICK_PERIOD_MS);
 
     control_loop->step(now_ms);
+
+    // 通信侧每次校时交付一个新样本：这里只在代号变化时注入一次，
+    // 走时由 LogicController 自己按 now_ms 外推；没校上就保持"无时间"，
+    // 逻辑侧会置 FAULT_TIME_UNSET 并按降级策略运行。
+    uint32_t time_generation = 0U;
+    uint32_t time_of_day_ms = 0U;
+    if (CommunicationService::latestTimeOfDay(&time_generation, &time_of_day_ms) &&
+        (time_generation != g_last_time_generation)) {
+      g_last_time_generation = time_generation;
+      controller->setTimeOfDay(time_of_day_ms);
+    }
 
     const uint32_t rising_mask = control_loop->lastRisingExceptionMask();
     if (greenhouse::EXCEPTION_NONE != rising_mask) {
